@@ -1,0 +1,46 @@
+name: Web CI
+
+on:
+  push:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - '.github/workflows/ci-web.yml'
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter web lint
+
+      - name: Type check
+        run: pnpm --filter web typecheck
+
+      - name: Test
+        run: pnpm --filter web test
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: pnpm --filter web build

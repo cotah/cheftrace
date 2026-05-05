@@ -1,0 +1,18 @@
+{
+  "name": "cheftrace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Restaurant inventory + HACCP + invoice OCR + POS integration SaaS",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "lint:web": "pnpm --filter web lint",
+    "test:web": "pnpm --filter web test",
+    "typecheck:web": "pnpm --filter web typecheck"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
