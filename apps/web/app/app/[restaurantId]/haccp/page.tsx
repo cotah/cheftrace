@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
@@ -29,9 +30,9 @@ function runStatusBadge(status: string) {
 export default function HACCPPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
   const router = useRouter();
   const qc = useQueryClient();
@@ -39,13 +40,13 @@ export default function HACCPPage({
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["haccp-templates", rid],
     queryFn: () => haccpApi.listTemplates(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const { data: todayRuns = [] } = useQuery({
     queryKey: ["haccp-runs", rid, today],
     queryFn: () => haccpApi.listRuns(rid, today, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const startMutation = useMutation({

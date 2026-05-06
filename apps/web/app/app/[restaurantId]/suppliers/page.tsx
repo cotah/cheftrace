@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { suppliersApi } from "@/lib/api/resources";
@@ -26,9 +26,9 @@ import {
 export default function SuppliersPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function SuppliersPage({
   const { data: suppliers = [], isLoading } = useQuery({
     queryKey: ["suppliers", rid],
     queryFn: () => suppliersApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const createMutation = useMutation({

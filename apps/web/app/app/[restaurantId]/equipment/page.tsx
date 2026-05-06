@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { equipmentApi } from "@/lib/api/resources";
@@ -83,7 +83,7 @@ function TempLogDialog({
   const { data: logs = [] } = useQuery({
     queryKey: ["temp-logs", restaurantId, equipment.id],
     queryFn: () => equipmentApi.listTemperatureLogs(restaurantId, equipment.id, token),
-    enabled: open && !!token,
+    enabled: open && !!restaurantId && !!token,
   });
 
   const logMutation = useMutation({
@@ -324,15 +324,15 @@ function AddEquipmentDialog({
 export default function EquipmentPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
 
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ["equipment", rid],
     queryFn: () => equipmentApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   return (

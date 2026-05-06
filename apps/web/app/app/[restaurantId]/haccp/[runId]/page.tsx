@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
@@ -110,9 +110,9 @@ interface ItemState {
 export default function HACCPRunPage({
   params,
 }: {
-  params: { restaurantId: string; runId: string };
+  params: Promise<{ restaurantId: string; runId: string }>;
 }) {
-  const { restaurantId: rid, runId } = params;
+  const { restaurantId: rid, runId } = use(params);
   const token = useToken();
   const router = useRouter();
   const qc = useQueryClient();
@@ -121,7 +121,7 @@ export default function HACCPRunPage({
   const { data: run, isLoading: runLoading, error: runError } = useQuery({
     queryKey: ["haccp-run", rid, runId],
     queryFn: () => haccpApi.getRun(rid, runId, token!),
-    enabled: !!token,
+    enabled: !!rid && !!runId && !!token,
   });
 
   const isDynamic =
@@ -130,13 +130,13 @@ export default function HACCPRunPage({
   const { data: items = [] } = useQuery({
     queryKey: ["haccp-items", rid, run?.template_id],
     queryFn: () => haccpApi.listItems(rid, run!.template_id, token!),
-    enabled: !!token && !!run && !isDynamic,
+    enabled: !!rid && !!token && !!run && !isDynamic,
   });
 
   const { data: existingAnswers = [] } = useQuery({
     queryKey: ["haccp-answers", rid, runId],
     queryFn: () => haccpApi.listAnswers(rid, runId, token!),
-    enabled: !!token,
+    enabled: !!rid && !!runId && !!token,
   });
 
   const submitMutation = useMutation({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
@@ -20,9 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function ReceivePage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
   const router = useRouter();
   const qc = useQueryClient();
@@ -37,13 +37,13 @@ export default function ReceivePage({
   const { data: products = [] } = useQuery({
     queryKey: ["products", rid],
     queryFn: () => productsApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers", rid],
     queryFn: () => suppliersApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const selectedProduct = products.find((p) => p.id === productId);

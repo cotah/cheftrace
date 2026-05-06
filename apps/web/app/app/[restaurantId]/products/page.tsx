@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { productsApi, categoriesApi } from "@/lib/api/resources";
@@ -35,9 +35,9 @@ const UNITS = ["kg", "g", "l", "ml", "unit"] as const;
 export default function ProductsPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -49,13 +49,13 @@ export default function ProductsPage({
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products", rid],
     queryFn: () => productsApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", rid],
     queryFn: () => categoriesApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const createMutation = useMutation({

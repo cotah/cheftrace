@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { dashboardApi } from "@/lib/api/resources";
@@ -138,15 +139,15 @@ function TemperatureCard({ alerts }: { alerts: TemperatureAlert[] }) {
 export default function DashboardPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard", rid],
     queryFn: () => dashboardApi.get(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
     refetchInterval: 60_000,
   });
 

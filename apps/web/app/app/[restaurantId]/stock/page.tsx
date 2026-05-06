@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { stockLotsApi, productsApi } from "@/lib/api/resources";
@@ -42,22 +43,22 @@ function expiryBadge(lot: StockLot, warningDays: number, criticalDays: number) {
 export default function StockPage({
   params,
 }: {
-  params: { restaurantId: string };
+  params: Promise<{ restaurantId: string }>;
 }) {
-  const rid = params.restaurantId;
+  const { restaurantId: rid } = use(params);
   const token = useToken();
   const { active } = useRestaurant();
 
   const { data: lots = [], isLoading } = useQuery({
     queryKey: ["stock-lots", rid],
     queryFn: () => stockLotsApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const { data: products = [] } = useQuery({
     queryKey: ["products", rid],
     queryFn: () => productsApi.list(rid, token!),
-    enabled: !!token,
+    enabled: !!rid && !!token,
   });
 
   const productMap = Object.fromEntries(products.map((p) => [p.id, p.name]));
