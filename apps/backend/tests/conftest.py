@@ -18,9 +18,9 @@ os.environ.setdefault(
 )
 os.environ.setdefault("ENVIRONMENT", "development")
 
-import app.models  # noqa: F401, E402
-from app.core.database import get_session  # noqa: E402
-from app.main import app as fastapi_app  # noqa: E402
+import app.models  # noqa: F401
+from app.core.database import get_session
+from app.main import app as fastapi_app
 
 TEST_DB_URL = os.environ["DATABASE_URL"]
 
