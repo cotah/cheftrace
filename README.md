@@ -5,7 +5,7 @@ Restaurant inventory + HACCP + invoice OCR + POS integration SaaS for Irish rest
 ## Stack
 
 - **Backend:** Python 3.12, FastAPI, SQLModel, Alembic, PostgreSQL 16
-- **Frontend:** Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
+- **Frontend:** Next.js 16, TypeScript, Tailwind CSS, shadcn/ui
 - **Auth:** Supabase Auth
 - **Storage:** Supabase Storage
 - **Deploy:** Railway (backend), Vercel (frontend)
@@ -13,7 +13,7 @@ Restaurant inventory + HACCP + invoice OCR + POS integration SaaS for Irish rest
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 24+
 - pnpm 9+
 - Python 3.12+
 - uv (https://docs.astral.sh/uv/)
