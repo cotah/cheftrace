@@ -1,4 +1,5 @@
 """Permission matrix regression tests. Must never regress."""
+
 from app.core.permissions import Permission, has_permission
 
 

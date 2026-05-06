@@ -1,4 +1,5 @@
 """Supabase JWT verification via JWKS with HS256 fallback."""
+
 from typing import Any, cast
 
 import httpx
@@ -16,9 +17,7 @@ async def _fetch_jwks() -> list[dict[str, Any]]:
     if _jwks_cache is not None:
         return _jwks_cache
     async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(
-            f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
-        )
+        response = await client.get(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
         response.raise_for_status()
         data = response.json()
         _jwks_cache = data.get("keys", [])
