@@ -1,7 +1,7 @@
 # Handoff — Auditoria Sprint 3 → Sprint 4
 
 > Data: 2026-05-06
-> Commit: ef54dd5
+> Commit: 5a4ec53
 > Autor da auditoria: Claude (claude.ai, sessão externa ao repo)
 > Para: Claude Code (sessão de desenvolvimento contínuo)
 
@@ -18,7 +18,7 @@ diffs dos 9 ficheiros alterados. O resto do projecto está intacto.
 
 ---
 
-## Ficheiros alterados (commit ef54dd5)
+## Ficheiros alterados (commit 5a4ec53)
 
 ```
 apps/backend/app/schemas/haccp.py
