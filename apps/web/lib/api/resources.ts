@@ -101,8 +101,8 @@ export const haccpApi = {
     token: string,
   ) => api.post<HACCPRun>(`/restaurants/${rid}/haccp/runs`, data, token),
 
-  getRun: (rid: string, _runId: string, token: string) =>
-    api.get<HACCPRun>(`/restaurants/${rid}/haccp/runs?run_date=`, token),
+  getRun: (rid: string, runId: string, token: string) =>
+    api.get<HACCPRun>(`/restaurants/${rid}/haccp/runs/${runId}`, token),
 
   listItems: (rid: string, templateId: string, token: string) =>
     api.get<HACCPItem[]>(`/restaurants/${rid}/haccp/templates/${templateId}/items`, token),

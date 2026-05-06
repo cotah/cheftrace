@@ -10,6 +10,7 @@ from app.api.deps import CurrentMembership, get_session, require_permission
 from app.core.exceptions import NotFoundError
 from app.core.permissions import Permission
 from app.models.membership import RestaurantMembership
+from app.models.product import Product
 from app.models.stock_lot import StockLot
 from app.schemas.stock import LotCreate, LotExpiryUpdate, LotRead
 from app.services.stock_service import StockService
@@ -38,6 +39,24 @@ async def receive_lot(
     membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
     session: AsyncSession = Depends(get_session),
 ) -> StockLot:
+    # Enforce expiry_required business rule server-side
+    product_result = await session.exec(
+        select(Product).where(
+            Product.id == data.product_id,
+            Product.restaurant_id == membership.restaurant_id,
+        )
+    )
+    product = product_result.first()
+    if not product:
+        raise NotFoundError("Product")
+    if product.expiry_required and data.expiry_date is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="expiry_date is required for this product",
+        )
+
     svc = StockService(session)
     lot = await svc.receive(
         restaurant_id=membership.restaurant_id,

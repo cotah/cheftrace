@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -66,7 +67,7 @@ class TemperatureLogRead(BaseModel):
     is_out_of_range: bool
     notes: str | None = None
     recorded_by_user_id: UUID
-    recorded_at: str
-    created_at: str
+    recorded_at: datetime
+    created_at: datetime
 
     model_config = {"from_attributes": True}

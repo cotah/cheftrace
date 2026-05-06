@@ -147,27 +147,36 @@ class DashboardService:
         return alerts
 
     async def _low_stock_alerts(self, restaurant_id: UUID) -> list[LowStockAlert]:
-        result = await self.session.exec(
+        # Fetch all relevant products and active lots in 2 queries (no N+1)
+        products_result = await self.session.exec(
             select(Product).where(
                 Product.restaurant_id == restaurant_id,
                 Product.is_active == True,  # noqa: E712
                 Product.minimum_stock_quantity != None,  # noqa: E711
             )
         )
-        products = list(result.all())
+        products = list(products_result.all())
+        if not products:
+            return []
+
+        product_ids = [p.id for p in products]
+        lots_result = await self.session.exec(
+            select(StockLot).where(
+                StockLot.restaurant_id == restaurant_id,
+                StockLot.product_id.in_(product_ids),  # type: ignore[attr-defined]
+                StockLot.status == "active",
+            )
+        )
+        lots_by_product: dict[str, Decimal] = {}
+        for lot in lots_result.all():
+            pid = str(lot.product_id)
+            lots_by_product[pid] = lots_by_product.get(pid, Decimal("0")) + lot.quantity_remaining
+
         alerts = []
         for product in products:
             if product.minimum_stock_quantity is None:
                 continue
-            lots_result = await self.session.exec(
-                select(StockLot).where(
-                    StockLot.product_id == product.id,
-                    StockLot.restaurant_id == restaurant_id,
-                    StockLot.status == "active",
-                )
-            )
-            lots = list(lots_result.all())
-            total: Decimal = sum((lot.quantity_remaining for lot in lots), Decimal("0"))
+            total = lots_by_product.get(str(product.id), Decimal("0"))
             if total < product.minimum_stock_quantity:
                 alerts.append(
                     LowStockAlert(

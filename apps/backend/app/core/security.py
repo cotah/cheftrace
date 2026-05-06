@@ -9,18 +9,23 @@ from jose import ExpiredSignatureError, JWTError, jwt
 from app.core.config import settings
 
 _jwks_cache: list[dict[str, Any]] | None = None
+_jwks_cache_at: float = 0.0
+_JWKS_TTL_SECONDS: float = 3600.0  # 1 hour
 
 
 async def _fetch_jwks() -> list[dict[str, Any]]:
-    """Fetch public keys from Supabase JWKS endpoint. Cached in memory."""
-    global _jwks_cache
-    if _jwks_cache is not None:
+    """Fetch public keys from Supabase JWKS endpoint. Cached in memory for 1 hour."""
+    import time
+
+    global _jwks_cache, _jwks_cache_at
+    if _jwks_cache is not None and (time.monotonic() - _jwks_cache_at) < _JWKS_TTL_SECONDS:
         return _jwks_cache
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
         response.raise_for_status()
         data = response.json()
         _jwks_cache = data.get("keys", [])
+        _jwks_cache_at = time.monotonic()
     return _jwks_cache
 
 

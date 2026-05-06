@@ -161,6 +161,24 @@ async def list_runs(
     return list(result.all())
 
 
+@router.get("/runs/{run_id}", response_model=HACCPRunRead)
+async def get_run(
+    run_id: UUID,
+    membership: CurrentMembership,
+    session: AsyncSession = Depends(get_session),
+) -> HACCPChecklistRun:
+    result = await session.exec(
+        select(HACCPChecklistRun).where(
+            HACCPChecklistRun.id == run_id,
+            HACCPChecklistRun.restaurant_id == membership.restaurant_id,
+        )
+    )
+    run = result.first()
+    if not run:
+        raise NotFoundError("HACCPChecklistRun")
+    return run
+
+
 @router.post("/runs", response_model=HACCPRunRead, status_code=201)
 async def start_run(
     data: HACCPRunCreate,

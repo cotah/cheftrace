@@ -20,7 +20,6 @@ import type {
   EquipmentSnapshot,
   HACCPAnswer,
   HACCPItem,
-  HACCPRun,
 } from "@/lib/api/types";
 
 const SKIP_REASONS = [
@@ -119,16 +118,12 @@ export default function HACCPRunPage({
   const qc = useQueryClient();
   const [answers, setAnswers] = useState<Record<string, ItemState>>({});
 
-  const { data: allRuns = [] } = useQuery({
-    queryKey: ["haccp-all-runs", rid],
-    queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0]!;
-      return haccpApi.listRuns(rid, today, token!);
-    },
+  const { data: run, isLoading: runLoading, error: runError } = useQuery({
+    queryKey: ["haccp-run", rid, runId],
+    queryFn: () => haccpApi.getRun(rid, runId, token!),
     enabled: !!token,
   });
 
-  const run: HACCPRun | undefined = allRuns.find((r) => r.id === runId);
   const isDynamic =
     run?.equipment_snapshot_json !== null && run?.equipment_snapshot_json !== undefined;
 
@@ -195,11 +190,22 @@ export default function HACCPRunPage({
     submitMutation.mutate(payload);
   };
 
-  if (!run) {
+  if (runLoading) {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold">HACCP Run</h1>
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (runError || !run) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold">HACCP Run</h1>
+        <p className="text-sm text-destructive">
+          {runError ? (runError as Error).message : "Run not found."}
+        </p>
       </div>
     );
   }

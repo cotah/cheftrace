@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 
 
 class HACCPTemplateCreate(BaseModel):
@@ -62,14 +62,19 @@ class HACCPRunRead(BaseModel):
     id: UUID
     template_id: UUID
     status: str
-    run_date: str
+    run_date: date
     shift_number: int | None = None
+    equipment_snapshot_json: list[dict[str, Any]] | None = None
     completed_by_user_id: UUID | None = None
     completed_at: str | None = None
     notes: str | None = None
     created_by_user_id: UUID
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("run_date")
+    def serialize_run_date(self, value: date) -> str:
+        return value.isoformat()
 
 
 SKIP_REASONS = (

@@ -1,9 +1,15 @@
 @AGENTS.md
 # Regras específicas do projeto ChefTrace
 Antes de escrever qualquer código neste repositório, leia:
-- docs/PHASE-0-BRIEF.md (especificação executável da fase atual)
+- docs/PHASE-1-BRIEF.md (especificação do sprint atual — Sprint 4)
 - docs/PLANO_CONSTRUCAO.md (estratégia geral do produto)
 - docs/adr/*.md (Architecture Decision Records — TODAS as decisões fundadoras)
+## Estado actual do código — LEIA PRIMEIRO
+Foi feita uma auditoria técnica completa dos Sprints 1-3 em 2026-05-06.
+Foram corrigidos 8 bugs. Leia obrigatoriamente antes de qualquer trabalho:
+- docs/AUDIT_SPRINT3_HANDOFF.md — o que mudou, por que mudou, o que ficou pendente
+O commit de auditoria é: ef54dd5
+Não é necessário reler toda a codebase — só o handoff e os 9 ficheiros alterados.
 ## Princípios não-negociáveis
 1. Multi-tenant rigoroso: TODA query filtra restaurant_id. Sem exceção.
 2. Movimentos de estoque, logs HACCP e POS events são IMUTÁVEIS. Não
