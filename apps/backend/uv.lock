@@ -178,6 +178,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "anyio" },
     { name = "factory-boy" },
     { name = "freezegun" },
     { name = "mypy" },
@@ -203,6 +204,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anyio", extras = ["asyncio"], specifier = ">=4.0.0" },
     { name = "factory-boy", specifier = ">=3.3.0" },
     { name = "freezegun", specifier = ">=1.5.0" },
     { name = "mypy", specifier = ">=1.13.0" },

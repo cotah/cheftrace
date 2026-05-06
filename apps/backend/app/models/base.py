@@ -1,12 +1,20 @@
-"""Base model definitions for SQLModel entities."""
+"""Base SQLModel with timestamps."""
 
 from datetime import UTC, datetime
+from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
 
 
-class TimestampMixin(SQLModel):
-    """Mixin adding created_at and updated_at columns."""
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+class TimestampedBase(SQLModel):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    created_at: datetime = Field(default_factory=utcnow, nullable=False)
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        nullable=False,
+        sa_column_kwargs={"onupdate": utcnow},
+    )
