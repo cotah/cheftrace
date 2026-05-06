@@ -22,7 +22,10 @@ import app.models  # noqa: F401
 from app.core.database import get_session
 from app.main import app as fastapi_app
 
-TEST_DB_URL = os.environ["DATABASE_URL"]
+TEST_DB_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://test:test@localhost:5433/test",
+)
 
 
 @pytest.fixture

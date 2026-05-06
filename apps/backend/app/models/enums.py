@@ -1,0 +1,57 @@
+"""Domain enums for ChefTrace — TEXT+CHECK pattern (not Postgres native enums)."""
+
+from enum import StrEnum
+
+
+class UnitKind(StrEnum):
+    KG = "kg"
+    G = "g"
+    L = "l"
+    ML = "ml"
+    UNIT = "unit"
+
+
+class MovementKind(StrEnum):
+    RECEIVE = "receive"
+    MANUAL_IN = "manual_in"
+    MANUAL_OUT = "manual_out"
+    ADJUSTMENT = "adjustment"
+    DISCARD = "discard"
+    CONSUME = "consume"
+
+
+class LotStatus(StrEnum):
+    ACTIVE = "active"
+    DEPLETED = "depleted"
+    EXPIRED = "expired"
+    DISCARDED = "discarded"
+
+
+class MovementSource(StrEnum):
+    MANUAL = "manual"
+    PURCHASE_LIST = "purchase_list"
+    POS = "pos"
+    OCR = "ocr"
+
+
+class AuditEntity(StrEnum):
+    STOCK_LOT = "stock_lot"
+    HACCP_TEMPLATE = "haccp_template"
+    EQUIPMENT = "equipment"
+    PRODUCT = "product"
+    RECIPE = "recipe"
+
+
+class AuditAction(StrEnum):
+    EXPIRY_EDIT = "expiry_edit"
+    TEMPLATE_CHANGE = "template_change"
+    EQUIPMENT_CHANGE = "equipment_change"
+    PRODUCT_CHANGE = "product_change"
+    RECIPE_CHANGE = "recipe_change"
+
+
+class ExpiryReason(StrEnum):
+    TYPO = "typo"
+    SUPPLIER_ERROR = "supplier_error"
+    INSPECTION_FINDING = "inspection_finding"
+    OTHER = "other"
