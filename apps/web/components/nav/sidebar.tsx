@@ -15,6 +15,9 @@ export function Sidebar() {
   const navItems = active
     ? [
         { href: `/app/${active.id}/dashboard`, label: "Dashboard" },
+        { href: `/app/${active.id}/products`, label: "Products" },
+        { href: `/app/${active.id}/suppliers`, label: "Suppliers" },
+        { href: `/app/${active.id}/stock`, label: "Stock" },
       ]
     : [];
 
