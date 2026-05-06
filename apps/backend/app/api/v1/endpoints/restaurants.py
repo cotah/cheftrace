@@ -25,6 +25,7 @@ from app.schemas.restaurant import (
     RestaurantCreate,
     RestaurantRead,
 )
+from app.services.haccp_service import HACCPService
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -58,12 +59,21 @@ async def create_restaurant(
     restaurant = Restaurant(**data.model_dump())
     session.add(restaurant)
     await session.flush()
+
     membership = RestaurantMembership(
         restaurant_id=restaurant.id,
         user_id=current_user.id,
         role="owner",
     )
     session.add(membership)
+    await session.flush()
+
+    haccp_svc = HACCPService(session)
+    await haccp_svc.create_seed_templates(
+        restaurant_id=restaurant.id,
+        created_by_user_id=current_user.id,
+    )
+
     await session.commit()
     await session.refresh(restaurant)
     return restaurant
