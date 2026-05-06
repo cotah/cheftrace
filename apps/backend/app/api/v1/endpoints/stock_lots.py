@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -50,8 +50,6 @@ async def receive_lot(
     if not product:
         raise NotFoundError("Product")
     if product.expiry_required and data.expiry_date is None:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=422,
             detail="expiry_date is required for this product",
