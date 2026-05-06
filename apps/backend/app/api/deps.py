@@ -27,7 +27,7 @@ async def get_current_user(
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     token = authorization.removeprefix("Bearer ")
-    payload = verify_supabase_token(token)
+    payload = await verify_supabase_token(token)
     user_id = UUID(payload["sub"])
     email = payload.get("email", "")
     result = await session.exec(select(User).where(User.id == user_id))
