@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
 import { haccpApi } from "@/lib/api/resources";
+import { downloadPdf } from "@/lib/pdf-download";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,13 +225,28 @@ export default function HACCPRunPage({
             {run.shift_number ? ` — Shift ${run.shift_number}` : ""}
           </p>
         </div>
-        {!isCompleted && (
+        {!isCompleted ? (
           <Button
             onClick={() => completeMutation.mutate()}
             disabled={completeMutation.isPending}
           >
             {completeMutation.isPending ? "Completing..." : "Complete run"}
           </Button>
+        ) : (
+          token && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                void downloadPdf(
+                  `/restaurants/${rid}/reports/daily-checklist.pdf?run_id=${runId}`,
+                  token,
+                  `checklist-${run.run_date}.pdf`,
+                )
+              }
+            >
+              Download PDF
+            </Button>
+          )
         )}
       </div>
 

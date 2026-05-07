@@ -193,3 +193,50 @@ export interface HACCPAnswer {
   skip_reason_text: string | null;
   answered_by_user_id: string;
 }
+
+export type PurchaseListType = "food" | "beverage" | "non_food" | "mixed";
+export type PurchaseListStatus =
+  | "draft"
+  | "sent"
+  | "partially_received"
+  | "received";
+export type PurchaseListItemStatus =
+  | "pending"
+  | "received"
+  | "partial"
+  | "not_received";
+
+export interface PurchaseList {
+  id: string;
+  type: string;
+  status: string;
+  notes: string | null;
+  created_by_user_id: string;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PurchaseListItem {
+  id: string;
+  purchase_list_id: string;
+  product_id: string;
+  supplier_id: string | null;
+  quantity_ordered: number;
+  quantity_received: number | null;
+  unit: string;
+  unit_cost_estimate: number | null;
+  status: string;
+  notes: string | null;
+}
+
+export interface PurchaseListWithItems extends PurchaseList {
+  items: PurchaseListItem[];
+}
+
+export interface ReceiveItemInput {
+  quantity_received: number;
+  expiry_date?: string | null;
+  unit_cost?: number | null;
+  notes?: string | null;
+}

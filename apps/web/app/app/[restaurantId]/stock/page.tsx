@@ -1,12 +1,29 @@
 "use client";
 
-import { use } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { use, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useToken } from "@/hooks/use-token";
 import { stockLotsApi, productsApi } from "@/lib/api/resources";
 import { useRestaurant } from "@/hooks/use-restaurant";
-import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -15,8 +32,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import type { StockLot } from "@/lib/api/types";
+
+const EXPIRY_REASONS = [
+  { value: "typo", label: "Typo on entry" },
+  { value: "supplier_error", label: "Supplier error" },
+  { value: "inspection_finding", label: "Inspection finding" },
+  { value: "other", label: "Other" },
+];
 
 function expiryBadge(lot: StockLot, warningDays: number, criticalDays: number) {
   if (lot.status === "discarded") return <Badge variant="outline">Discarded</Badge>;
@@ -37,6 +60,166 @@ function expiryBadge(lot: StockLot, warningDays: number, criticalDays: number) {
     <Badge variant="outline" className="text-green-700 border-green-700">
       {diffDays}d left
     </Badge>
+  );
+}
+
+function EditExpiryDialog({
+  rid,
+  lot,
+  productName,
+  token,
+}: {
+  rid: string;
+  lot: StockLot;
+  productName: string;
+  token: string;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [expiryDate, setExpiryDate] = useState(lot.expiry_date ?? "");
+  const [reason, setReason] = useState("");
+
+  const editMutation = useMutation({
+    mutationFn: () =>
+      stockLotsApi.updateExpiry(
+        rid,
+        lot.id,
+        { expiry_date: expiryDate, reason },
+        token,
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["stock-lots", rid] });
+      void qc.invalidateQueries({ queryKey: ["dashboard", rid] });
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Edit expiry
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit expiry — {productName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Current expiry: {lot.expiry_date ?? "—"}. Editing creates an audit log
+            entry. A reason is required.
+          </p>
+          <div className="space-y-2">
+            <Label>New expiry date</Label>
+            <Input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Reason</Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPIRY_REASONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            className="w-full"
+            disabled={!expiryDate || !reason || editMutation.isPending}
+            onClick={() => editMutation.mutate()}
+          >
+            {editMutation.isPending ? "Saving..." : "Save change"}
+          </Button>
+          {editMutation.isError && (
+            <p className="text-sm text-destructive">{editMutation.error.message}</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DiscardDialog({
+  rid,
+  lot,
+  productName,
+  token,
+}: {
+  rid: string;
+  lot: StockLot;
+  productName: string;
+  token: string;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const discardMutation = useMutation({
+    mutationFn: () => stockLotsApi.discard(rid, lot.id, token),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["stock-lots", rid] });
+      void qc.invalidateQueries({ queryKey: ["dashboard", rid] });
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-destructive">
+          Discard
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Discard lot?</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <p className="text-sm">
+            About to discard{" "}
+            <span className="font-semibold">
+              {lot.quantity_remaining} {lot.unit}
+            </span>{" "}
+            of <span className="font-semibold">{productName}</span>. This sets
+            remaining quantity to 0 and records a movement of kind{" "}
+            <code className="text-xs bg-muted px-1 rounded">discard</code>. The
+            lot is not deleted — movements remain in the log.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={discardMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={discardMutation.isPending}
+              onClick={() => discardMutation.mutate()}
+            >
+              {discardMutation.isPending ? "Discarding..." : "Discard lot"}
+            </Button>
+          </div>
+          {discardMutation.isError && (
+            <p className="text-sm text-destructive">
+              {discardMutation.error.message}
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -94,20 +277,41 @@ export default function StockPage({
               <TableHead>Unit</TableHead>
               <TableHead>Expiry</TableHead>
               <TableHead>Received</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {activeLots.map((lot) => (
-              <TableRow key={lot.id}>
-                <TableCell className="font-medium">
-                  {productMap[lot.product_id] ?? lot.product_id}
-                </TableCell>
-                <TableCell>{lot.quantity_remaining}</TableCell>
-                <TableCell>{lot.unit}</TableCell>
-                <TableCell>{expiryBadge(lot, warningDays, criticalDays)}</TableCell>
-                <TableCell>{lot.received_date}</TableCell>
-              </TableRow>
-            ))}
+            {activeLots.map((lot) => {
+              const productName =
+                productMap[lot.product_id] ?? lot.product_id.slice(0, 8);
+              return (
+                <TableRow key={lot.id}>
+                  <TableCell className="font-medium">{productName}</TableCell>
+                  <TableCell>{lot.quantity_remaining}</TableCell>
+                  <TableCell>{lot.unit}</TableCell>
+                  <TableCell>{expiryBadge(lot, warningDays, criticalDays)}</TableCell>
+                  <TableCell>{lot.received_date}</TableCell>
+                  <TableCell className="text-right space-x-1">
+                    {token && (
+                      <>
+                        <EditExpiryDialog
+                          rid={rid}
+                          lot={lot}
+                          productName={productName}
+                          token={token}
+                        />
+                        <DiscardDialog
+                          rid={rid}
+                          lot={lot}
+                          productName={productName}
+                          token={token}
+                        />
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}

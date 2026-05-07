@@ -8,6 +8,10 @@ import type {
   HACCPRun,
   HACCPTemplate,
   Product,
+  PurchaseList,
+  PurchaseListItem,
+  PurchaseListWithItems,
+  ReceiveItemInput,
   StockLot,
   StockMovement,
   Supplier,
@@ -115,4 +119,91 @@ export const haccpApi = {
 
   completeRun: (rid: string, runId: string, token: string) =>
     api.put<HACCPRun>(`/restaurants/${rid}/haccp/runs/${runId}/complete`, {}, token),
+};
+
+export const purchaseListsApi = {
+  list: (rid: string, token: string, status?: string) =>
+    api.get<PurchaseList[]>(
+      `/restaurants/${rid}/purchase-lists${status ? `?status=${status}` : ""}`,
+      token,
+    ),
+  create: (
+    rid: string,
+    data: { type: string; notes?: string | null },
+    token: string,
+  ) => api.post<PurchaseList>(`/restaurants/${rid}/purchase-lists`, data, token),
+  get: (rid: string, listId: string, token: string) =>
+    api.get<PurchaseListWithItems>(
+      `/restaurants/${rid}/purchase-lists/${listId}`,
+      token,
+    ),
+  update: (
+    rid: string,
+    listId: string,
+    data: { type?: string; notes?: string | null },
+    token: string,
+  ) =>
+    api.put<PurchaseList>(
+      `/restaurants/${rid}/purchase-lists/${listId}`,
+      data,
+      token,
+    ),
+  addItem: (
+    rid: string,
+    listId: string,
+    data: {
+      product_id: string;
+      supplier_id?: string | null;
+      quantity_ordered: number;
+      unit: string;
+      unit_cost_estimate?: number | null;
+      notes?: string | null;
+    },
+    token: string,
+  ) =>
+    api.post<PurchaseListItem>(
+      `/restaurants/${rid}/purchase-lists/${listId}/items`,
+      data,
+      token,
+    ),
+  updateItem: (
+    rid: string,
+    listId: string,
+    itemId: string,
+    data: Partial<{
+      quantity_ordered: number;
+      unit_cost_estimate: number | null;
+      supplier_id: string | null;
+      notes: string | null;
+    }>,
+    token: string,
+  ) =>
+    api.put<PurchaseListItem>(
+      `/restaurants/${rid}/purchase-lists/${listId}/items/${itemId}`,
+      data,
+      token,
+    ),
+  deleteItem: (rid: string, listId: string, itemId: string, token: string) =>
+    api.delete<void>(
+      `/restaurants/${rid}/purchase-lists/${listId}/items/${itemId}`,
+      token,
+    ),
+  send: (rid: string, listId: string, token: string) =>
+    api.post<PurchaseList>(
+      `/restaurants/${rid}/purchase-lists/${listId}/send`,
+      {},
+      token,
+    ),
+  receiveItem: (
+    rid: string,
+    listId: string,
+    itemId: string,
+    data: ReceiveItemInput,
+    token: string,
+  ) =>
+    api.post<PurchaseListItem>(
+      `/restaurants/${rid}/purchase-lists/${listId}/items/${itemId}/receive`,
+      data,
+      token,
+    ),
 };

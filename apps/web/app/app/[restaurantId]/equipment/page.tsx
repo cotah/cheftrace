@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToken } from "@/hooks/use-token";
 import { equipmentApi } from "@/lib/api/resources";
+import { downloadPdf } from "@/lib/pdf-download";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -377,7 +378,26 @@ export default function EquipmentPage({
                   </p>
                 )}
                 {token && (
-                  <TempLogDialog equipment={eq} restaurantId={rid} token={token} />
+                  <div className="flex flex-wrap gap-2">
+                    <TempLogDialog equipment={eq} restaurantId={rid} token={token} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const today = new Date();
+                        const monthAgo = new Date(today);
+                        monthAgo.setDate(today.getDate() - 30);
+                        const fmt = (d: Date) => d.toISOString().split("T")[0]!;
+                        void downloadPdf(
+                          `/restaurants/${rid}/reports/temperature-log.pdf?from=${fmt(monthAgo)}&to=${fmt(today)}&equipment_id=${eq.id}`,
+                          token,
+                          `temperature-${eq.name.replace(/\s+/g, "-")}.pdf`,
+                        );
+                      }}
+                    >
+                      Download log
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
