@@ -55,3 +55,24 @@ class ExpiryReason(StrEnum):
     SUPPLIER_ERROR = "supplier_error"
     INSPECTION_FINDING = "inspection_finding"
     OTHER = "other"
+
+
+class PurchaseListType(StrEnum):
+    FOOD = "food"
+    BEVERAGE = "beverage"
+    NON_FOOD = "non_food"
+    MIXED = "mixed"
+
+
+class PurchaseListStatus(StrEnum):
+    DRAFT = "draft"
+    SENT = "sent"
+    PARTIALLY_RECEIVED = "partially_received"
+    RECEIVED = "received"
+
+
+class PurchaseListItemStatus(StrEnum):
+    PENDING = "pending"
+    RECEIVED = "received"
+    PARTIAL = "partial"
+    NOT_RECEIVED = "not_received"

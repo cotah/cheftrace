@@ -8,6 +8,8 @@ from app.models.haccp_run import HACCPChecklistRun
 from app.models.haccp_template import HACCPChecklistTemplate
 from app.models.membership import RestaurantMembership
 from app.models.product import Product
+from app.models.purchase_list import PurchaseList
+from app.models.purchase_list_item import PurchaseListItem
 from app.models.restaurant import Restaurant
 from app.models.stock_lot import StockLot
 from app.models.stock_movement import StockMovement
@@ -24,6 +26,8 @@ __all__ = [
     "HACCPChecklistTemplate",
     "Product",
     "ProductCategory",
+    "PurchaseList",
+    "PurchaseListItem",
     "Restaurant",
     "RestaurantMembership",
     "StockLot",
