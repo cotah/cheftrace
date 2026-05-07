@@ -1,0 +1,160 @@
+{# Base template — header, footer, page numbers, shared CSS #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}ChefTrace Report{% endblock %}</title>
+<style>
+@page {
+  size: A4;
+  margin: 18mm 14mm 22mm 14mm;
+  @bottom-left {
+    content: "ChefTrace — {{ restaurant_name }}";
+    font-size: 8pt;
+    color: #666;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 8pt;
+    color: #666;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Helvetica", "Arial", sans-serif;
+  font-size: 10pt;
+  color: #222;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.report-header {
+  border-bottom: 2px solid #1a3d2e;
+  padding-bottom: 10pt;
+  margin-bottom: 16pt;
+}
+.report-header h1 {
+  margin: 0;
+  font-size: 18pt;
+  color: #1a3d2e;
+}
+.report-header .meta {
+  font-size: 9pt;
+  color: #555;
+  margin-top: 4pt;
+}
+.report-header .meta strong { color: #222; }
+
+table.report {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10pt;
+}
+table.report thead {
+  display: table-header-group;
+}
+table.report th, table.report td {
+  border: 1px solid #ccc;
+  padding: 6pt 8pt;
+  text-align: left;
+  vertical-align: top;
+}
+table.report th {
+  background: #f0f4f1;
+  font-weight: 600;
+  font-size: 9pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+}
+table.report tr.out-of-range td {
+  background: #fff3f0;
+}
+table.report tr.out-of-range td.flag {
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.section-title {
+  font-size: 12pt;
+  font-weight: 600;
+  margin: 18pt 0 6pt 0;
+  color: #1a3d2e;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 3pt;
+}
+
+.empty-state {
+  padding: 24pt;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  border: 1px dashed #ccc;
+  margin-top: 12pt;
+}
+
+.signature-block {
+  margin-top: 30pt;
+  display: flex;
+  gap: 20pt;
+}
+.signature-line {
+  flex: 1;
+  border-top: 1px solid #444;
+  padding-top: 4pt;
+  font-size: 9pt;
+  color: #555;
+}
+
+.summary-grid {
+  display: table;
+  width: 100%;
+  margin-top: 8pt;
+}
+.summary-grid .row {
+  display: table-row;
+}
+.summary-grid .label,
+.summary-grid .value {
+  display: table-cell;
+  padding: 3pt 8pt 3pt 0;
+}
+.summary-grid .label {
+  width: 35%;
+  color: #555;
+}
+.summary-grid .value {
+  font-weight: 600;
+}
+
+.compliance-bar {
+  display: inline-block;
+  width: 100pt;
+  height: 6pt;
+  background: #eee;
+  border-radius: 3pt;
+  vertical-align: middle;
+  margin-left: 4pt;
+  position: relative;
+}
+.compliance-bar .fill {
+  height: 100%;
+  background: #1a3d2e;
+  border-radius: 3pt;
+}
+</style>
+{% block extra_styles %}{% endblock %}
+</head>
+<body>
+<div class="report-header">
+  <h1>{% block report_title %}{% endblock %}</h1>
+  <div class="meta">
+    <div><strong>{{ restaurant_name }}</strong>{% if restaurant_city %} — {{ restaurant_city }}{% endif %}</div>
+    <div>Generated: {{ generated_at }}</div>
+    {% block header_meta %}{% endblock %}
+  </div>
+</div>
+{% block content %}{% endblock %}
+</body>
+</html>

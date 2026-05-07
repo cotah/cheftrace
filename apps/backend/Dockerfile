@@ -4,6 +4,17 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
+# WeasyPrint native dependencies (cairo, pango, gobject) + fonts for HACCP PDFs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libcairo2 \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libgdk-pixbuf-2.0-0 \
+        libffi-dev \
+        shared-mime-info \
+        fonts-dejavu \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Install uv

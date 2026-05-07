@@ -1,0 +1,58 @@
+{% extends "pdf/base.html" %}
+{% block title %}Temperature Log{% endblock %}
+{% block report_title %}Temperature Log{% endblock %}
+
+{% block header_meta %}
+<div>
+  Range: <strong>{{ date_from }}</strong> to <strong>{{ date_to }}</strong>
+  {% if equipment_filter %} — Equipment: <strong>{{ equipment_filter }}</strong>{% endif %}
+</div>
+<div>
+  Total readings: <strong>{{ total_readings }}</strong>
+  {% if out_of_range_count > 0 %}
+   — <span style="color: #c0392b;">{{ out_of_range_count }} out of range</span>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% if readings %}
+<table class="report">
+  <thead>
+    <tr>
+      <th style="width: 22%;">Recorded At</th>
+      <th>Equipment</th>
+      <th style="width: 15%;">Temperature</th>
+      <th style="width: 15%;">Safe Range</th>
+      <th style="width: 8%;" class="flag">Flag</th>
+      <th>Recorded by</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in readings %}
+    <tr {% if r.is_out_of_range %}class="out-of-range"{% endif %}>
+      <td>{{ r.recorded_at_display }}</td>
+      <td>{{ r.equipment_name }}{% if r.location %} <span style="color:#777;">({{ r.location }})</span>{% endif %}</td>
+      <td style="font-family: monospace;">{{ r.temperature }}&deg;C</td>
+      <td style="font-size: 9pt; color: #555;">
+        {% if r.min_temp is not none and r.max_temp is not none %}
+          {{ r.min_temp }} to {{ r.max_temp }}&deg;C
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td class="flag">{% if r.is_out_of_range %}OUT{% else %}OK{% endif %}</td>
+      <td style="font-size: 9pt;">{{ r.recorded_by }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">No temperature readings recorded in this period.</div>
+{% endif %}
+
+<div class="signature-block">
+  <div class="signature-line">Reviewed by</div>
+  <div class="signature-line">Date</div>
+</div>
+{% endblock %}

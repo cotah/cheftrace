@@ -1,0 +1,60 @@
+{% extends "pdf/base.html" %}
+{% block title %}HACCP Checklist{% endblock %}
+{% block report_title %}{{ template_name }}{% endblock %}
+
+{% block header_meta %}
+<div>
+  Run date: <strong>{{ run_date }}</strong>
+  {% if shift_number %} — Shift {{ shift_number }}{% endif %}
+</div>
+<div>
+  Status: <strong>{{ status }}</strong>
+  {% if completed_at_display %} — Completed at {{ completed_at_display }} by {{ completed_by }}{% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% if entries %}
+<table class="report">
+  <thead>
+    <tr>
+      <th style="width: 6%;">#</th>
+      <th>Item</th>
+      <th style="width: 25%;">Answer</th>
+      <th style="width: 12%;" class="flag">Flag</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entries %}
+    <tr {% if e.is_out_of_range %}class="out-of-range"{% endif %}>
+      <td>{{ e.order }}</td>
+      <td>
+        {{ e.question }}
+        {% if e.equipment_name %}
+          <div style="font-size: 8pt; color: #777; margin-top: 2pt;">Equipment: {{ e.equipment_name }}</div>
+        {% endif %}
+        {% if e.skip_reason %}
+          <div style="font-size: 8pt; color: #888; margin-top: 2pt;">Skipped: {{ e.skip_reason }}{% if e.skip_reason_text %} — {{ e.skip_reason_text }}{% endif %}</div>
+        {% endif %}
+      </td>
+      <td style="font-family: monospace; font-size: 9pt;">{{ e.answer_display }}</td>
+      <td class="flag">{% if e.is_out_of_range %}OUT{% elif e.skip_reason %}SKIP{% elif e.answer_display == "—" %}—{% else %}OK{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">No items recorded for this run.</div>
+{% endif %}
+
+{% if run_notes %}
+<div class="section-title">Notes</div>
+<div style="border: 1px solid #ddd; padding: 8pt; background: #fafafa;">{{ run_notes }}</div>
+{% endif %}
+
+<div class="signature-block">
+  <div class="signature-line">Performed by — {{ created_by }}</div>
+  <div class="signature-line">Reviewed by</div>
+  <div class="signature-line">Date</div>
+</div>
+{% endblock %}

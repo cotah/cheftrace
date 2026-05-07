@@ -1,0 +1,81 @@
+{% extends "pdf/base.html" %}
+{% block title %}HACCP Monthly Summary{% endblock %}
+{% block report_title %}HACCP Monthly Summary{% endblock %}
+
+{% block header_meta %}
+<div>Period: <strong>{{ month_name }} {{ year }}</strong></div>
+<div>
+  Total runs: <strong>{{ total_runs }}</strong>
+  &nbsp;|&nbsp; Completed: <strong>{{ completed_runs }}</strong>
+  &nbsp;|&nbsp; Out of range: <span style="color: {% if out_of_range_total > 0 %}#c0392b{% else %}#1a3d2e{% endif %};"><strong>{{ out_of_range_total }}</strong></span>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<div class="section-title">Compliance per template</div>
+{% if templates %}
+<table class="report">
+  <thead>
+    <tr>
+      <th>Template</th>
+      <th style="width: 12%;">Frequency</th>
+      <th style="width: 10%;">Expected</th>
+      <th style="width: 10%;">Completed</th>
+      <th style="width: 30%;">Compliance</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in templates %}
+    <tr>
+      <td>{{ t.name }}</td>
+      <td>{{ t.frequency }}</td>
+      <td>{{ t.expected }}</td>
+      <td>{{ t.completed }}</td>
+      <td>
+        {{ t.compliance_pct }}%
+        <span class="compliance-bar"><span class="fill" style="width: {{ t.compliance_pct }}%;"></span></span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">No HACCP templates configured for this restaurant.</div>
+{% endif %}
+
+<div class="section-title">All runs in period</div>
+{% if runs %}
+<table class="report">
+  <thead>
+    <tr>
+      <th style="width: 14%;">Run Date</th>
+      <th>Template</th>
+      <th style="width: 8%;">Shift</th>
+      <th style="width: 14%;">Status</th>
+      <th style="width: 18%;">Completed</th>
+      <th style="width: 10%;" class="flag">Flagged</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in runs %}
+    <tr {% if r.has_out_of_range %}class="out-of-range"{% endif %}>
+      <td>{{ r.run_date }}</td>
+      <td>{{ r.template_name }}</td>
+      <td>{{ r.shift_number or "—" }}</td>
+      <td>{{ r.status }}</td>
+      <td>{{ r.completed_at_display or "—" }}</td>
+      <td class="flag">{% if r.has_out_of_range %}YES{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">No runs recorded in this period.</div>
+{% endif %}
+
+<div class="signature-block">
+  <div class="signature-line">Reviewed by</div>
+  <div class="signature-line">Date</div>
+</div>
+{% endblock %}
