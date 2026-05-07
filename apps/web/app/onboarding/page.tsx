@@ -2,95 +2,81 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { api } from "@/lib/api/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useToken } from "@/hooks/use-token";
+import { ProgressIndicator } from "@/components/onboarding/progress-indicator";
+import { RestaurantStep } from "@/components/onboarding/restaurant-step";
+import { ProductsEquipmentStep } from "@/components/onboarding/products-equipment-step";
+import { HACCPStep } from "@/components/onboarding/haccp-step";
+import { PurchaseListStep } from "@/components/onboarding/purchase-list-step";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 
+const TOTAL_STEPS = 4;
+
 export default function OnboardingPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [city, setCity] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const token = useToken();
+  const [step, setStep] = useState(1);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/signin");
-        return;
-      }
-      const restaurant = await api.post<{ id: string }>(
-        "/restaurants",
-        { name, city, country: "IE" },
-        session.access_token
-      );
-      router.push(`/app/${restaurant.id}/dashboard`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+  function goToDashboard() {
+    if (restaurantId) {
+      router.push(`/app/${restaurantId}/dashboard`);
     }
+  }
+
+  if (!token) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Set up your restaurant</CardTitle>
-          <CardDescription>
-            Create your first restaurant to get started.
-          </CardDescription>
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-3">
+          <CardTitle>Welcome to ChefTrace</CardTitle>
+          <ProgressIndicator current={step} total={TOTAL_STEPS} />
         </CardHeader>
-        <form onSubmit={handleCreate}>
-          <CardContent className="space-y-4">
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="name">Restaurant name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="The Grand Café"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                type="text"
-                placeholder="Dublin"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating..." : "Create restaurant"}
-            </Button>
-          </CardFooter>
-        </form>
+        <CardContent>
+          {step === 1 && (
+            <RestaurantStep
+              token={token}
+              onComplete={(rid) => {
+                setRestaurantId(rid);
+                setStep(2);
+              }}
+            />
+          )}
+          {step === 2 && restaurantId && (
+            <ProductsEquipmentStep
+              restaurantId={restaurantId}
+              token={token}
+              onComplete={() => setStep(3)}
+              onSkip={() => setStep(3)}
+            />
+          )}
+          {step === 3 && (
+            <HACCPStep
+              onComplete={() => setStep(4)}
+              onSkip={() => setStep(4)}
+            />
+          )}
+          {step === 4 && restaurantId && (
+            <PurchaseListStep
+              restaurantId={restaurantId}
+              token={token}
+              onComplete={goToDashboard}
+              onSkip={goToDashboard}
+            />
+          )}
+        </CardContent>
       </Card>
     </div>
   );
