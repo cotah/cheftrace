@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     haccp,
     health,
     products,
+    purchase_lists,
     restaurants,
     stock,
     stock_lots,
@@ -28,3 +29,4 @@ api_router.include_router(stock.router)
 api_router.include_router(equipment.router)
 api_router.include_router(haccp.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(purchase_lists.router)
