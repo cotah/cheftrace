@@ -1,6 +1,7 @@
 """HACCP checklist endpoints."""
 
 from datetime import date
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -28,6 +29,27 @@ from app.schemas.haccp import (
 from app.services.haccp_service import HACCPService
 
 router = APIRouter(prefix="/restaurants/{restaurant_id}/haccp", tags=["haccp"])
+
+
+@router.post("/seed-templates")
+async def reseed_templates(
+    membership: RestaurantMembership = Depends(require_permission(Permission.EDIT_RESTAURANT)),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """
+    Idempotent re-seed of FSAI HACCP templates.
+
+    Creates any seed templates whose name does not yet exist for this
+    restaurant. Existing templates (seed or custom) are never modified.
+    Owner-only (EDIT_RESTAURANT).
+    """
+    svc = HACCPService(session)
+    created, skipped = await svc.reseed_missing_templates(
+        restaurant_id=membership.restaurant_id,
+        created_by_user_id=membership.user_id,
+    )
+    await session.commit()
+    return {"created": created, "skipped": skipped}
 
 
 @router.get("/templates", response_model=list[HACCPTemplateRead])

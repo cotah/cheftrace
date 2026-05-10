@@ -99,7 +99,7 @@ async def equipment_item(session, test_data):
 
 
 @pytest.mark.asyncio
-async def test_seed_templates_creates_six(session, test_data):
+async def test_seed_templates_creates_ten(session, test_data):
     svc = HACCPService(session)
     await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
     result = await session.exec(
@@ -108,7 +108,7 @@ async def test_seed_templates_creates_six(session, test_data):
         )
     )
     templates = list(result.all())
-    assert len(templates) == 6
+    assert len(templates) == 10
 
 
 @pytest.mark.asyncio
@@ -121,12 +121,219 @@ async def test_seed_templates_names(session, test_data):
         )
     )
     names = {t.name for t in result.all()}
+    # SC1, SC2, SC5 (3 templates), SC8 — existing, enhanced
     assert "Opening Check" in names
     assert "Closing Check" in names
     assert "Temperature Log" in names
     assert "Delivery Check" in names
     assert "Cleaning Log" in names
     assert "Weekly Deep Clean" in names
+    # SC3, SC4, SC6, SC7 — new FSAI templates
+    assert "SC3 — Cooking/Cooling/Reheating Record" in names
+    assert "SC4 — Hot Hold/Display Record" in names
+    assert "SC6 — Staff Hygiene Training Record" in names
+    assert "SC7 — Fitness to Work Assessment" in names
+
+
+@pytest.mark.asyncio
+async def test_seed_sc4_has_hot_hold_filter(session, test_data):
+    svc = HACCPService(session)
+    await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"],
+            HACCPChecklistTemplate.name == "SC4 — Hot Hold/Display Record",
+        )
+    )
+    sc4 = result.first()
+    assert sc4 is not None
+    assert sc4.is_equipment_dynamic is True
+    assert sc4.equipment_type_filter == "hot_hold"
+    assert sc4.shifts_per_day == 3
+
+
+@pytest.mark.asyncio
+async def test_sc4_dynamic_run_snapshots_only_hot_hold(session, test_data):
+    fridge = Equipment(
+        restaurant_id=test_data["restaurant"],
+        name="Main Fridge",
+        equipment_type="fridge",
+        min_temp=0,
+        max_temp=5,
+    )
+    hot_hold = Equipment(
+        restaurant_id=test_data["restaurant"],
+        name="Buffet Hot Hold",
+        equipment_type="hot_hold",
+        min_temp=63,
+        max_temp=90,
+    )
+    session.add(fridge)
+    session.add(hot_hold)
+    await session.flush()
+
+    svc = HACCPService(session)
+    await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
+    tpl_result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"],
+            HACCPChecklistTemplate.name == "SC4 — Hot Hold/Display Record",
+        )
+    )
+    sc4 = tpl_result.first()
+    assert sc4 is not None
+
+    run = await svc.start_run(
+        restaurant_id=test_data["restaurant"],
+        template_id=sc4.id,
+        run_date=TODAY,
+        created_by_user_id=test_data["user"],
+        shift_number=1,
+    )
+    assert run.equipment_snapshot_json is not None
+    assert len(run.equipment_snapshot_json) == 1
+    assert run.equipment_snapshot_json[0]["name"] == "Buffet Hot Hold"
+    assert run.equipment_snapshot_json[0]["equipment_type"] == "hot_hold"
+
+
+@pytest.mark.asyncio
+async def test_temperature_log_still_captures_all_equipment(session, test_data):
+    """Temperature Log has no equipment_type_filter — keeps capturing all types."""
+    fridge = Equipment(
+        restaurant_id=test_data["restaurant"],
+        name="Fridge A",
+        equipment_type="fridge",
+        min_temp=0,
+        max_temp=5,
+    )
+    freezer = Equipment(
+        restaurant_id=test_data["restaurant"],
+        name="Freezer A",
+        equipment_type="freezer",
+        min_temp=-25,
+        max_temp=-18,
+    )
+    session.add(fridge)
+    session.add(freezer)
+    await session.flush()
+
+    svc = HACCPService(session)
+    await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
+    tpl_result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"],
+            HACCPChecklistTemplate.name == "Temperature Log",
+        )
+    )
+    temp_log = tpl_result.first()
+    assert temp_log is not None
+    assert temp_log.equipment_type_filter is None
+
+    run = await svc.start_run(
+        restaurant_id=test_data["restaurant"],
+        template_id=temp_log.id,
+        run_date=TODAY,
+        created_by_user_id=test_data["user"],
+        shift_number=1,
+    )
+    assert run.equipment_snapshot_json is not None
+    assert len(run.equipment_snapshot_json) == 2
+
+
+@pytest.mark.asyncio
+async def test_reseed_idempotent(session, test_data):
+    svc = HACCPService(session)
+    created1, skipped1 = await svc.reseed_missing_templates(
+        test_data["restaurant"], test_data["user"]
+    )
+    assert len(created1) == 10
+    assert skipped1 == []
+
+    created2, skipped2 = await svc.reseed_missing_templates(
+        test_data["restaurant"], test_data["user"]
+    )
+    assert created2 == []
+    assert len(skipped2) == 10
+
+
+@pytest.mark.asyncio
+async def test_reseed_adds_only_missing(session, test_data):
+    from app.models.haccp_item_template import HACCPChecklistItemTemplate
+
+    svc = HACCPService(session)
+    await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
+
+    # Delete one template (items first, then template — schema has no CASCADE)
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"],
+            HACCPChecklistTemplate.name == "SC6 — Staff Hygiene Training Record",
+        )
+    )
+    to_delete = result.first()
+    assert to_delete is not None
+
+    items_result = await session.exec(
+        select(HACCPChecklistItemTemplate).where(
+            HACCPChecklistItemTemplate.template_id == to_delete.id
+        )
+    )
+    for item in items_result.all():
+        await session.delete(item)
+    await session.flush()
+    await session.delete(to_delete)
+    await session.flush()
+
+    created, skipped = await svc.reseed_missing_templates(
+        test_data["restaurant"], test_data["user"]
+    )
+    assert created == ["SC6 — Staff Hygiene Training Record"]
+    assert len(skipped) == 9
+
+    # Final state: 10 templates again
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"]
+        )
+    )
+    assert len(list(result.all())) == 10
+
+
+@pytest.mark.asyncio
+async def test_reseed_preserves_existing_customisations(session, test_data):
+    """Reseed must never overwrite a template that already exists by name."""
+    svc = HACCPService(session)
+    await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
+
+    # Customise the Opening Check name to verify it is NOT recreated
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.restaurant_id == test_data["restaurant"],
+            HACCPChecklistTemplate.name == "Opening Check",
+        )
+    )
+    opening = result.first()
+    assert opening is not None
+    original_id = opening.id
+
+    # Customise frequency to detect tampering
+    opening.frequency = "weekly"
+    session.add(opening)
+    await session.flush()
+
+    created, skipped = await svc.reseed_missing_templates(
+        test_data["restaurant"], test_data["user"]
+    )
+    assert created == []
+    assert "Opening Check" in skipped
+
+    # Confirm customised template still has weekly freq and same id
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(HACCPChecklistTemplate.id == original_id)
+    )
+    persisted = result.first()
+    assert persisted is not None
+    assert persisted.frequency == "weekly"
 
 
 @pytest.mark.asyncio

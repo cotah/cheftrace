@@ -2,10 +2,16 @@
 HACCP service — seed templates, run management, answer recording.
 
 Rules:
-- Seed templates created atomically with restaurant creation
-- Dynamic temperature runs snapshot active equipment at start time
-- complete_run validates all items have answer OR skip_reason
-- haccp_checklist_answers are immutable (trigger in DB + no PUT/DELETE endpoints)
+- Seed templates created atomically with restaurant creation.
+- Dynamic templates snapshot equipment at start_run time. When the template
+  has equipment_type_filter set, the snapshot is restricted to active
+  equipment of that type only (e.g. SC4 Hot Hold/Display captures only
+  hot_hold units).
+- complete_run validates all required items have answer OR skip_reason.
+- haccp_checklist_answers are immutable (trigger in DB + no PUT/DELETE).
+
+The seed templates implement the FSAI Safe Catering Pack records SC1-SC8.
+Mapping is documented in the SEED_TEMPLATES list below.
 """
 
 from datetime import UTC, date, datetime
@@ -27,7 +33,23 @@ from app.schemas.haccp import HACCPAnswerCreate
 logger = structlog.get_logger(__name__)
 
 
+# ----------------------------------------------------------------------
+# FSAI Safe Catering Pack — seed templates
+#
+# Critical limits (FSAI Food Safety Authority of Ireland):
+#   - Chilled food:       0-5 °C
+#   - Frozen food:        <= -18 °C
+#   - Hot holding:        >= 63 °C
+#   - Cooking core temp:  >= 75 °C
+#   - Reheating core temp: >= 70 °C
+#   - Cooling:            63 °C to chilled within 2 hours
+#   - Danger zone:        5 °C - 63 °C
+# ----------------------------------------------------------------------
+
 SEED_TEMPLATES: list[dict[str, Any]] = [
+    # ------------------------------------------------------------------
+    # SC5 — Hygiene Inspection (opening leg)
+    # ------------------------------------------------------------------
     {
         "name": "Opening Check",
         "frequency": "daily",
@@ -35,48 +57,66 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
         "items": [
             {
                 "order_index": 1,
-                "question": "All fridges within temperature range (0-5°C)?",
+                "question": "All fridges within critical limit (0-5°C, chilled CCP)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 2,
-                "question": "All freezers within temperature range (-18°C or below)?",
+                "question": "All freezers within critical limit (<= -18°C, frozen CCP)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 3,
-                "question": "Hot hold equipment pre-heated to 63°C or above?",
+                "question": "Hot hold equipment pre-heated to >= 63°C (hot hold CCP)?",
                 "item_type": "yes_no",
-                "is_required": False,
+                "is_required": True,
             },
             {
                 "order_index": 4,
-                "question": "Hand wash stations stocked — soap, paper towels, sanitiser?",
+                "question": "Cold chain intact overnight (no equipment failure alarms)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 5,
-                "question": "Staff wearing clean uniforms and correct PPE?",
+                "question": "Hand wash stations stocked — soap, paper towels, sanitiser?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 6,
-                "question": "All products correctly date-labelled?",
+                "question": "Staff wearing clean uniforms and correct PPE?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 7,
-                "question": "Prep area and surfaces clean from previous session?",
+                "question": "Ready-to-eat / high-risk foods stored above raw foods?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 8,
+                "question": "All products correctly date-labelled?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 9,
+                "question": "Prep area and surfaces clean from previous session?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 10,
+                "question": "Cleaning chemicals stored away from food (separate area)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 11,
                 "question": "Pest activity status",
                 "item_type": "single_select",
                 "is_required": True,
@@ -88,8 +128,23 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
                     ]
                 },
             },
+            {
+                "order_index": 12,
+                "question": "First aid kit accessible and stocked?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 13,
+                "question": "Corrective action taken (if any CCP failed above)",
+                "item_type": "text",
+                "is_required": False,
+            },
         ],
     },
+    # ------------------------------------------------------------------
+    # SC5 — Hygiene Inspection (closing leg)
+    # ------------------------------------------------------------------
     {
         "name": "Closing Check",
         "frequency": "daily",
@@ -103,54 +158,81 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
             },
             {
                 "order_index": 2,
-                "question": "All date labels checked and updated for carry-over items?",
+                "question": "Raw and ready-to-eat foods physically separated?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 3,
-                "question": "Fridge and freezer doors closed securely?",
+                "question": "All date labels checked and updated for carry-over items?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 4,
-                "question": "Final temperature check completed — all within range?",
+                "question": "Fridge and freezer doors closed securely?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 5,
-                "question": "All surfaces, equipment, and floors cleaned?",
+                "question": "Final fridge/freezer/hot hold temperature check completed within critical limits?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 6,
-                "question": "Food waste disposed of and bins cleaned?",
+                "question": "Equipment running normally overnight (no failure indicators)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 7,
-                "question": "All non-essential gas and electrical equipment switched off?",
+                "question": "All surfaces, equipment, and floors cleaned?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 8,
-                "question": "Building secured — doors locked, alarms set?",
+                "question": "Food waste disposed of and bins cleaned?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 9,
+                "question": "Cleaning chemicals stored away from food after use?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 10,
+                "question": "All non-essential gas and electrical equipment switched off?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 11,
+                "question": "Building secured — doors locked, alarms set?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 12,
+                "question": "Corrective action taken (if any CCP failed above)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 13,
                 "question": "Any issues to report for next shift?",
                 "item_type": "text",
                 "is_required": False,
             },
         ],
     },
+    # ------------------------------------------------------------------
+    # SC2 — Temperature Records (cold chain monitoring, all equipment)
+    # ------------------------------------------------------------------
     {
         "name": "Temperature Log",
         "frequency": "shift",
@@ -158,6 +240,9 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
         "is_equipment_dynamic": True,
         "items": [],
     },
+    # ------------------------------------------------------------------
+    # SC1 — Delivery / Goods Inwards Acceptance
+    # ------------------------------------------------------------------
     {
         "name": "Delivery Check",
         "frequency": "on_delivery",
@@ -171,67 +256,88 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
             },
             {
                 "order_index": 2,
-                "question": "Delivery vehicle temperature within safe range?",
-                "item_type": "yes_no",
+                "question": "Supplier invoice / reference number",
+                "item_type": "text",
                 "is_required": True,
             },
             {
                 "order_index": 3,
-                "question": "All product packaging intact — no damage or contamination?",
+                "question": "Delivery vehicle temperature within critical limit (chilled <= 5°C, frozen <= -15°C)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 4,
-                "question": "All products within use-by / best-before dates?",
+                "question": "All product packaging intact — no damage or contamination?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 5,
-                "question": "Chilled products received at 5°C or below?",
-                "item_type": "yes_no",
+                "question": "Batch codes / lot numbers recorded for traceability",
+                "item_type": "text",
                 "is_required": True,
             },
             {
                 "order_index": 6,
-                "question": "Frozen products received at -15°C or below?",
+                "question": "Use-by / best-before dates checked per product",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 7,
-                "question": "Allergen documentation received and checked?",
+                "question": "Chilled products received at 0-5°C (cold chain CCP)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 8,
-                "question": "Products stored immediately after receipt?",
+                "question": "Frozen products received at <= -15°C (cold chain CCP)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 9,
-                "question": "Any items rejected — details",
-                "item_type": "text",
-                "is_required": False,
+                "question": "Allergen documentation received and checked?",
+                "item_type": "yes_no",
+                "is_required": True,
             },
             {
                 "order_index": 10,
+                "question": "Products stored immediately after receipt (no time in danger zone)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 11,
                 "question": "Overall delivery decision",
                 "item_type": "single_select",
                 "is_required": True,
                 "options_json": {
                     "options": [
                         "Accepted",
-                        "Partially accepted — see notes",
-                        "Rejected",
+                        "Conditionally accepted — see corrective action",
+                        "Rejected — see corrective action",
                     ]
                 },
             },
+            {
+                "order_index": 12,
+                "question": "Items rejected / conditionally accepted — detail with reason",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 13,
+                "question": "Corrective action taken (rejected items, supplier notification)",
+                "item_type": "text",
+                "is_required": False,
+            },
         ],
     },
+    # ------------------------------------------------------------------
+    # SC8 — Cleaning Schedule
+    # ------------------------------------------------------------------
     {
         "name": "Cleaning Log",
         "frequency": "daily",
@@ -245,45 +351,80 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
                 "min_selections": 1,
                 "options_json": {
                     "options": [
-                        "Prep surfaces/worktops",
-                        "Chopping boards",
+                        "Prep surfaces / worktops",
+                        "Chopping boards (colour-coded)",
                         "Sinks and taps",
                         "Fridge interiors",
                         "Freezer exteriors",
-                        "Oven/grill/range",
+                        "Oven / grill / range",
                         "Fryer",
                         "Floors",
                         "Bins and surrounds",
-                        "Walls and splash backs",
+                        "Walls and splashbacks",
                     ]
                 },
             },
             {
                 "order_index": 2,
-                "question": "Cleaning chemicals used at correct dilution?",
+                "question": "Cleaning chemicals used at correct dilution (chemical CCP)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 3,
-                "question": "Colour-coded cloths and equipment used correctly?",
+                "question": "Sanitiser concentration verified",
+                "item_type": "single_select",
+                "is_required": True,
+                "options_json": {
+                    "options": [
+                        "Visual check only",
+                        "Test strip used",
+                        "Surface swab taken",
+                        "Not verified",
+                    ]
+                },
+            },
+            {
+                "order_index": 4,
+                "question": "Sanitiser strength in ppm (if measured)",
+                "item_type": "numeric",
+                "is_required": False,
+            },
+            {
+                "order_index": 5,
+                "question": "Colour-coded cloths and equipment used correctly per food zone?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
-                "order_index": 4,
+                "order_index": 6,
+                "question": "Two-stage clean applied where required (clean then sanitise)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 7,
                 "question": "All cleaning completed to required standard?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
-                "order_index": 5,
+                "order_index": 8,
+                "question": "Corrective action (if any answer above is No)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 9,
                 "question": "Any areas requiring follow-up?",
                 "item_type": "text",
                 "is_required": False,
             },
         ],
     },
+    # ------------------------------------------------------------------
+    # SC5 — Hygiene Inspection (weekly deep-clean leg)
+    # ------------------------------------------------------------------
     {
         "name": "Weekly Deep Clean",
         "frequency": "weekly",
@@ -297,7 +438,7 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
                 "min_selections": 1,
                 "options_json": {
                     "options": [
-                        "Behind and under fridges/freezers",
+                        "Behind and under fridges / freezers",
                         "Extractor hood and filters",
                         "Drains and drain covers",
                         "Wall tiles and grouting",
@@ -305,6 +446,8 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
                         "Light fittings",
                         "Storage shelving",
                         "Walk-in fridge walls and floor",
+                        "Storeroom floors and corners",
+                        "Outside bin areas",
                     ]
                 },
             },
@@ -316,21 +459,238 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
             },
             {
                 "order_index": 3,
-                "question": "No signs of pest activity found?",
+                "question": "No signs of pest activity (droppings, grease tracks, gnaw marks)?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 4,
-                "question": "Deep clean completed to required standard?",
+                "question": "Ventilation and extraction filters cleaned or replaced?",
                 "item_type": "yes_no",
                 "is_required": True,
             },
             {
                 "order_index": 5,
+                "question": "Deep clean completed to required standard?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "Corrective action (if any answer above is No)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 7,
                 "question": "Any maintenance issues identified?",
                 "item_type": "text",
                 "is_required": False,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # SC3 — Cooking / Cooling / Reheating Record
+    # ------------------------------------------------------------------
+    {
+        "name": "SC3 — Cooking/Cooling/Reheating Record",
+        "frequency": "on_delivery",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Food item / dish name",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Process type (CCP)",
+                "item_type": "single_select",
+                "is_required": True,
+                "options_json": {
+                    "options": [
+                        "Cooking",
+                        "Cooling",
+                        "Reheating",
+                    ]
+                },
+            },
+            {
+                "order_index": 3,
+                "question": "Core temperature reached (°C)",
+                "item_type": "numeric",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Time temperature recorded (HH:MM)",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": (
+                    "Critical limit met? "
+                    "Cooking >= 75°C · Reheating >= 70°C · "
+                    "Cooling 63°C -> chilled within 2 hours"
+                ),
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "Corrective action if critical limit not met (re-cook, discard, etc.)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 7,
+                "question": "Person responsible",
+                "item_type": "text",
+                "is_required": True,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # SC4 — Hot Hold / Display Record (dynamic, hot_hold equipment only)
+    # ------------------------------------------------------------------
+    {
+        "name": "SC4 — Hot Hold/Display Record",
+        "frequency": "shift",
+        "shifts_per_day": 3,
+        "is_equipment_dynamic": True,
+        "equipment_type_filter": "hot_hold",
+        "items": [],
+    },
+    # ------------------------------------------------------------------
+    # SC6 — Staff Hygiene Training Record
+    # ------------------------------------------------------------------
+    {
+        "name": "SC6 — Staff Hygiene Training Record",
+        "frequency": "on_delivery",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Staff member name",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Training date (YYYY-MM-DD)",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Topics covered",
+                "item_type": "multi_select",
+                "is_required": True,
+                "min_selections": 1,
+                "options_json": {
+                    "options": [
+                        "Personal hygiene",
+                        "Food handling",
+                        "Allergen awareness",
+                        "Temperature control (CCPs)",
+                        "Cold chain and danger zone",
+                        "Ready-to-eat / high-risk foods",
+                        "Pest awareness",
+                        "Cleaning and sanitisation procedures",
+                        "Fitness to work",
+                    ]
+                },
+            },
+            {
+                "order_index": 4,
+                "question": "Trainer name",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "Training material / certificate reference",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 6,
+                "question": "Staff member acknowledged training and understood content?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # SC7 — Fitness to Work Assessment
+    # ------------------------------------------------------------------
+    {
+        "name": "SC7 — Fitness to Work Assessment",
+        "frequency": "on_delivery",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Staff member name",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Assessment date (YYYY-MM-DD)",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Symptoms reported in last 48 hours",
+                "item_type": "multi_select",
+                "is_required": True,
+                "min_selections": 1,
+                "options_json": {
+                    "options": [
+                        "None",
+                        "Diarrhoea",
+                        "Vomiting",
+                        "Sore throat with fever",
+                        "Skin infection (cuts, boils, septic spots)",
+                        "Eye / ear / mouth infection",
+                        "Jaundice",
+                    ]
+                },
+            },
+            {
+                "order_index": 4,
+                "question": "Symptoms cleared for >= 48 hours before return?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "Manager assessment",
+                "item_type": "single_select",
+                "is_required": True,
+                "options_json": {
+                    "options": [
+                        "Fit to work — full duties",
+                        "Fit to work — restricted duties (no ready-to-eat food handling)",
+                        "Excluded from food handling",
+                    ]
+                },
+            },
+            {
+                "order_index": 6,
+                "question": "Restrictions / notes (if applicable)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 7,
+                "question": "Staff member acknowledged assessment?",
+                "item_type": "yes_no",
+                "is_required": True,
             },
         ],
     },
@@ -341,27 +701,37 @@ class HACCPService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create_seed_templates(self, restaurant_id: UUID, created_by_user_id: UUID) -> None:
-        """Create 6 default Irish HACCP templates on restaurant creation."""
-        for tpl_data in SEED_TEMPLATES:
-            items = tpl_data.get("items", [])
-            tpl_fields = {k: v for k, v in tpl_data.items() if k != "items"}
-            template = HACCPChecklistTemplate(
-                restaurant_id=restaurant_id,
-                created_by_user_id=created_by_user_id,
-                is_seed=True,
-                **tpl_fields,
-            )
-            self.session.add(template)
-            await self.session.flush()
+    async def _create_single_template(
+        self,
+        restaurant_id: UUID,
+        created_by_user_id: UUID,
+        tpl_data: dict[str, Any],
+    ) -> HACCPChecklistTemplate:
+        """Build one template + its items. Caller is responsible for commit."""
+        items = tpl_data.get("items", [])
+        tpl_fields = {k: v for k, v in tpl_data.items() if k != "items"}
+        template = HACCPChecklistTemplate(
+            restaurant_id=restaurant_id,
+            created_by_user_id=created_by_user_id,
+            is_seed=True,
+            **tpl_fields,
+        )
+        self.session.add(template)
+        await self.session.flush()
 
-            for item_data in items:
-                item = HACCPChecklistItemTemplate(
-                    restaurant_id=restaurant_id,
-                    template_id=template.id,
-                    **item_data,
-                )
-                self.session.add(item)
+        for item_data in items:
+            item = HACCPChecklistItemTemplate(
+                restaurant_id=restaurant_id,
+                template_id=template.id,
+                **item_data,
+            )
+            self.session.add(item)
+        return template
+
+    async def create_seed_templates(self, restaurant_id: UUID, created_by_user_id: UUID) -> None:
+        """Create all FSAI seed templates on restaurant creation."""
+        for tpl_data in SEED_TEMPLATES:
+            await self._create_single_template(restaurant_id, created_by_user_id, tpl_data)
 
         await self.session.flush()
         logger.info(
@@ -369,6 +739,46 @@ class HACCPService:
             restaurant_id=str(restaurant_id),
             count=len(SEED_TEMPLATES),
         )
+
+    async def reseed_missing_templates(
+        self, restaurant_id: UUID, created_by_user_id: UUID
+    ) -> tuple[list[str], list[str]]:
+        """
+        Add seed templates whose name does not yet exist for this restaurant.
+
+        Idempotent: matches existing templates by `name` (regardless of is_seed
+        flag — if the user already has a non-seed template with the same name,
+        we skip it rather than create a duplicate). Existing templates are
+        never modified.
+
+        Returns (created_names, skipped_names).
+        """
+        existing_result = await self.session.exec(
+            select(HACCPChecklistTemplate).where(
+                HACCPChecklistTemplate.restaurant_id == restaurant_id,
+            )
+        )
+        existing_names = {t.name for t in existing_result.all()}
+
+        created: list[str] = []
+        skipped: list[str] = []
+
+        for tpl_data in SEED_TEMPLATES:
+            name = tpl_data["name"]
+            if name in existing_names:
+                skipped.append(name)
+                continue
+            await self._create_single_template(restaurant_id, created_by_user_id, tpl_data)
+            created.append(name)
+
+        await self.session.flush()
+        logger.info(
+            "haccp.reseed",
+            restaurant_id=str(restaurant_id),
+            created=len(created),
+            skipped=len(skipped),
+        )
+        return created, skipped
 
     async def start_run(
         self,
@@ -393,12 +803,15 @@ class HACCPService:
 
         equipment_snapshot: list[dict[str, Any]] | None = None
         if template.is_equipment_dynamic:
-            eq_result = await self.session.exec(
-                select(Equipment).where(
-                    Equipment.restaurant_id == restaurant_id,
-                    Equipment.is_active == True,  # noqa: E712
-                )
+            eq_query = select(Equipment).where(
+                Equipment.restaurant_id == restaurant_id,
+                Equipment.is_active == True,  # noqa: E712
             )
+            if template.equipment_type_filter:
+                eq_query = eq_query.where(
+                    Equipment.equipment_type == template.equipment_type_filter
+                )
+            eq_result = await self.session.exec(eq_query)
             active_equipment = list(eq_result.all())
             equipment_snapshot = [
                 {

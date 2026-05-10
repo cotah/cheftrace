@@ -10,6 +10,7 @@ class HACCPTemplateCreate(BaseModel):
     frequency: str
     shifts_per_day: int | None = None
     is_equipment_dynamic: bool = False
+    equipment_type_filter: str | None = None
 
 
 class HACCPTemplateRead(BaseModel):
@@ -18,6 +19,7 @@ class HACCPTemplateRead(BaseModel):
     frequency: str
     shifts_per_day: int | None = None
     is_equipment_dynamic: bool
+    equipment_type_filter: str | None = None
     is_active: bool
     is_seed: bool
 
