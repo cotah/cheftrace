@@ -9,6 +9,9 @@ from app.models.haccp_template import HACCPChecklistTemplate
 from app.models.invoice import Invoice
 from app.models.invoice_line_item import InvoiceLineItem
 from app.models.membership import RestaurantMembership
+from app.models.pos_event import PosEvent
+from app.models.pos_integration import PosIntegration
+from app.models.pos_item_mapping import PosItemMapping
 from app.models.product import Product
 from app.models.purchase_list import PurchaseList
 from app.models.purchase_list_item import PurchaseListItem
@@ -31,6 +34,9 @@ __all__ = [
     "HACCPChecklistTemplate",
     "Invoice",
     "InvoiceLineItem",
+    "PosEvent",
+    "PosIntegration",
+    "PosItemMapping",
     "Product",
     "ProductCategory",
     "PurchaseList",

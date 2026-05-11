@@ -55,6 +55,15 @@ class Settings(BaseSettings):
         description="rapidfuzz score (0-100) below which a product match is treated as no match",
     )
 
+    pos_encryption_key: str | None = Field(
+        default=None,
+        description=(
+            "Master key for pgp_sym_encrypt on POS access tokens "
+            "(Phase 4). Required to set or read POS credentials; "
+            "everything else works without it."
+        ),
+    )
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

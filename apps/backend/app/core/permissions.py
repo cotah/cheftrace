@@ -21,6 +21,9 @@ class Permission(StrEnum):
     VIEW_BILLING = "view_billing"
     CONFIGURE_ALERTS = "configure_alerts"
     SOFT_DELETE = "soft_delete"
+    # Owner-only: connecting a POS, rotating credentials, toggling auto-mode.
+    # Manager/chef can still review and approve the queue of pending sales.
+    MANAGE_POS_INTEGRATIONS = "manage_pos_integrations"
 
 
 _OPERATIONAL: frozenset[Permission] = frozenset(

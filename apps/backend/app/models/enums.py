@@ -91,3 +91,22 @@ class InvoiceLineItemStatus(StrEnum):
     SUGGESTED = "suggested"
     CONFIRMED = "confirmed"
     REJECTED = "rejected"
+
+
+class POSProvider(StrEnum):
+    SQUARE = "square"
+
+
+class POSConfirmationMode(StrEnum):
+    MANUAL = "manual"
+    AUTO = "auto"
+
+
+class POSEventStatus(StrEnum):
+    PENDING = "pending"
+    NEEDS_MAPPING = "needs_mapping"
+    PENDING_APPROVAL = "pending_approval"
+    PROCESSED = "processed"
+    INSUFFICIENT_STOCK = "insufficient_stock"
+    FAILED = "failed"
+    IGNORED = "ignored"
