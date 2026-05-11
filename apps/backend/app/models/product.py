@@ -9,6 +9,14 @@ from app.models.base import TimestampedBase
 
 class Product(TimestampedBase, table=True):
     __tablename__ = "products"
+    # Mirror CHECK constraint from migration 002 so the pytest fixture
+    # (SQLModel.metadata.create_all) enforces it like alembic does.
+    __table_args__ = (
+        sa.CheckConstraint(
+            "unit IN ('kg','g','l','ml','unit')",
+            name="ck_products_unit",
+        ),
+    )
 
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
     category_id: UUID | None = Field(
