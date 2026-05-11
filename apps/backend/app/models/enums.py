@@ -76,3 +76,17 @@ class PurchaseListItemStatus(StrEnum):
     RECEIVED = "received"
     PARTIAL = "partial"
     NOT_RECEIVED = "not_received"
+
+
+class InvoiceStatus(StrEnum):
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    NEEDS_REVIEW = "needs_review"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class InvoiceLineItemStatus(StrEnum):
+    SUGGESTED = "suggested"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"

@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     supabase_url: str = Field(..., description="Supabase project URL")
     supabase_anon_key: str = Field(..., description="Supabase anon public key")
     supabase_jwt_secret: str = Field(..., description="Supabase JWT secret for token verification")
+    supabase_service_role_key: str | None = Field(
+        default=None,
+        description="Supabase service role key — required for signed Storage URLs (Phase 2+)",
+    )
+    invoices_bucket: str = Field(
+        default="invoices",
+        description="Supabase Storage bucket name for invoice files",
+    )
 
     cors_origins: list[str] = ["http://localhost:3000"]
 

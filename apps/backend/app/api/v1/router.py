@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     equipment,
     haccp,
     health,
+    invoices,
     products,
     purchase_lists,
     reports,
@@ -32,3 +33,4 @@ api_router.include_router(haccp.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(purchase_lists.router)
 api_router.include_router(reports.router)
+api_router.include_router(invoices.router)

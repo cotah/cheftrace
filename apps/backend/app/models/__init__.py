@@ -6,6 +6,8 @@ from app.models.haccp_answer import HACCPChecklistAnswer
 from app.models.haccp_item_template import HACCPChecklistItemTemplate
 from app.models.haccp_run import HACCPChecklistRun
 from app.models.haccp_template import HACCPChecklistTemplate
+from app.models.invoice import Invoice
+from app.models.invoice_line_item import InvoiceLineItem
 from app.models.membership import RestaurantMembership
 from app.models.product import Product
 from app.models.purchase_list import PurchaseList
@@ -24,6 +26,8 @@ __all__ = [
     "HACCPChecklistItemTemplate",
     "HACCPChecklistRun",
     "HACCPChecklistTemplate",
+    "Invoice",
+    "InvoiceLineItem",
     "Product",
     "ProductCategory",
     "PurchaseList",
