@@ -7,11 +7,12 @@ secrets are never mixed with regular CRUD payloads.
 """
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models.pos_event import PosEvent
 from app.models.pos_integration import PosIntegration
 
 
@@ -70,3 +71,64 @@ class POSIntegrationRead(BaseModel):
             created_at=m.created_at,
             updated_at=m.updated_at,
         )
+
+
+class POSEventRead(BaseModel):
+    """Compact view of a POS event for the queue list."""
+
+    id: UUID
+    pos_integration_id: UUID
+    provider: str
+    external_event_id: str
+    external_order_id: str | None = None
+    event_type: str
+    processing_status: str
+    processed_at: datetime | None = None
+    error_message: str | None = None
+    received_at: datetime
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, m: PosEvent) -> "POSEventRead":
+        return cls(
+            id=m.id,
+            pos_integration_id=m.pos_integration_id,
+            provider=m.provider,
+            external_event_id=m.external_event_id,
+            external_order_id=m.external_order_id,
+            event_type=m.event_type,
+            processing_status=m.processing_status,
+            processed_at=m.processed_at,
+            error_message=m.error_message,
+            received_at=m.received_at,
+            created_at=m.created_at,
+        )
+
+
+class POSEventDetail(POSEventRead):
+    """Detail view — includes the raw payload for debugging."""
+
+    raw_payload: dict[str, Any]
+
+    @classmethod
+    def from_model(cls, m: PosEvent) -> "POSEventDetail":
+        base = POSEventRead.from_model(m)
+        return cls(**base.model_dump(), raw_payload=m.raw_payload)
+
+
+class POSEventDismissRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class POSEventProcessResponse(BaseModel):
+    """What the process / dismiss endpoints return.
+
+    Mirrors ProcessingResult from the service so the UI can render a
+    short outcome string without having to interpret status alone.
+    """
+
+    status: str
+    movements_created: int = 0
+    error_message: str | None = None
+    unmapped_item_ids: list[str] = []
+    insufficient_product_ids: list[UUID] = []

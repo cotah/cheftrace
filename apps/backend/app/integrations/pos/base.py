@@ -13,19 +13,24 @@ thread pools.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 
 class POSLineItem(BaseModel):
-    """One line on a POS order. `quantity` is how many of this item were
-    sold in the order (always >= 1 in practice; left as int for clarity).
+    """One line on a POS order.
+
+    `quantity` is how many of this item were sold in the order. Decimal
+    (not int) because Square — and most POS providers — let you sell
+    fractional quantities for items priced per kg/litre, and we
+    multiply this by the recipe yield before deducting from stock.
     """
 
     external_item_id: str
     external_item_name: str
-    quantity: int
+    quantity: Decimal
 
 
 class POSWebhookEvent(BaseModel):
@@ -84,6 +89,25 @@ class POSAdapter(ABC):
         Implementations should be tolerant of unknown fields — providers
         add new fields over time — but raise on missing required ones
         (event id, type) so the caller can return 400 to the provider.
+        """
+
+    @abstractmethod
+    async def enrich_event(
+        self,
+        event: POSWebhookEvent,
+        access_token: str,
+    ) -> POSWebhookEvent:
+        """Return a new event with `line_items` populated.
+
+        Webhook payloads from Square's `payment.*` events don't include
+        line items — the adapter is expected to call the provider's
+        Orders API to fetch them. For providers (or event types) that
+        already deliver line items inline, this can be a no-op that
+        returns the input unchanged.
+
+        Called by POSEventProcessor right before mapping + FEFO. The
+        access_token is decrypted by the caller and passed in; the
+        adapter never sees ciphertext.
         """
 
     @abstractmethod

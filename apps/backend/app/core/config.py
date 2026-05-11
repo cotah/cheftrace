@@ -74,6 +74,15 @@ class Settings(BaseSettings):
         ),
     )
 
+    square_api_base_url: str = Field(
+        default="https://connect.squareupsandbox.com",
+        description=(
+            "Square REST API base URL. Sandbox by default; switch to "
+            "https://connect.squareup.com when promoting to production "
+            "credentials."
+        ),
+    )
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

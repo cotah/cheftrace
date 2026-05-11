@@ -22,5 +22,8 @@ def get_pos_adapter(provider: str) -> POSAdapter:
                 "SQUARE_WEBHOOK_URL is not configured. "
                 "Set it in the backend environment to verify Square webhooks."
             )
-        return SquarePOSAdapter(notification_url=settings.square_webhook_url)
+        return SquarePOSAdapter(
+            notification_url=settings.square_webhook_url,
+            api_base_url=settings.square_api_base_url,
+        )
     raise ValueError(f"Unknown POS provider: {provider!r}")

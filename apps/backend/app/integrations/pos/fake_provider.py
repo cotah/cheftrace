@@ -6,6 +6,7 @@ responses cover the happy path; tests inject custom responses via the
 """
 
 from datetime import datetime
+from decimal import Decimal
 
 from app.integrations.pos.base import (
     POSAdapter,
@@ -19,11 +20,16 @@ class FakePOSAdapter(POSAdapter):
     def __init__(self) -> None:
         self.verify_calls: list[tuple[bytes, str, str]] = []
         self.parse_calls: list[bytes] = []
+        self.enrich_calls: list[tuple[POSWebhookEvent, str]] = []
         self.list_items_calls: list[tuple[str, str | None]] = []
         self.fetch_orders_calls: list[tuple[str, str | None, datetime]] = []
 
         self._verify_response: bool = True
         self._parse_response: POSWebhookEvent | None = None
+        # Map event_id -> list[POSLineItem]. Lets tests stage different
+        # enrichment outcomes per event in one suite.
+        self._enrich_line_items: dict[str, list[POSLineItem]] = {}
+        self._enrich_raises: Exception | None = None
         self._items_response: list[POSItem] = []
         self._orders_response: list[POSWebhookEvent] = []
 
@@ -34,6 +40,12 @@ class FakePOSAdapter(POSAdapter):
 
     def set_parse_response(self, event: POSWebhookEvent) -> None:
         self._parse_response = event
+
+    def set_enrich_line_items(self, event_id: str, line_items: list[POSLineItem]) -> None:
+        self._enrich_line_items[event_id] = line_items
+
+    def set_enrich_raises(self, exc: Exception | None) -> None:
+        self._enrich_raises = exc
 
     def set_items_response(self, items: list[POSItem]) -> None:
         self._items_response = items
@@ -65,11 +77,26 @@ class FakePOSAdapter(POSAdapter):
                 POSLineItem(
                     external_item_id="item_1",
                     external_item_name="Tomato Pasta",
-                    quantity=1,
+                    quantity=Decimal("1"),
                 ),
             ],
             raw_payload={"provider": "fake", "id": "evt_fake_1"},
         )
+
+    async def enrich_event(
+        self,
+        event: POSWebhookEvent,
+        access_token: str,
+    ) -> POSWebhookEvent:
+        self.enrich_calls.append((event, access_token))
+        if self._enrich_raises is not None:
+            raise self._enrich_raises
+        line_items = self._enrich_line_items.get(event.external_event_id)
+        if line_items is None:
+            # Default: return event unchanged. Test that wants enrichment
+            # must call set_enrich_line_items first.
+            return event
+        return event.model_copy(update={"line_items": line_items})
 
     async def list_items(
         self,

@@ -41,6 +41,7 @@ class AuditEntity(StrEnum):
     EQUIPMENT = "equipment"
     PRODUCT = "product"
     RECIPE = "recipe"
+    POS_EVENT = "pos_event"
 
 
 class AuditAction(StrEnum):
@@ -49,6 +50,8 @@ class AuditAction(StrEnum):
     EQUIPMENT_CHANGE = "equipment_change"
     PRODUCT_CHANGE = "product_change"
     RECIPE_CHANGE = "recipe_change"
+    POS_PROCESSED = "pos_processed"
+    POS_DISMISSED = "pos_dismissed"
 
 
 class ExpiryReason(StrEnum):
