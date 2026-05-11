@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -68,7 +68,7 @@ class HACCPRunRead(BaseModel):
     shift_number: int | None = None
     equipment_snapshot_json: list[dict[str, Any]] | None = None
     completed_by_user_id: UUID | None = None
-    completed_at: str | None = None
+    completed_at: datetime | None = None
     notes: str | None = None
     created_by_user_id: UUID
 

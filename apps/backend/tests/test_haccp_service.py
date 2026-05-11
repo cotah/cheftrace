@@ -1,7 +1,7 @@
 """HACCP service tests — seed templates, run management."""
 
 import os
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 
 import pytest
@@ -16,7 +16,7 @@ from app.models.equipment import Equipment
 from app.models.haccp_template import HACCPChecklistTemplate
 from app.models.restaurant import Restaurant
 from app.models.user import User
-from app.schemas.haccp import HACCPAnswerCreate
+from app.schemas.haccp import HACCPAnswerCreate, HACCPRunRead
 from app.services.haccp_service import HACCPService
 
 TODAY = date.today()
@@ -499,3 +499,24 @@ async def test_complete_dynamic_run_missing_equipment_fails(
     )
     with pytest.raises(ConflictError):
         await svc.complete_run(test_data["restaurant"], run.id, test_data["user"])
+
+
+def test_haccp_run_read_validates_completed_run():
+    """Regression: HACCPRunRead must accept ORM-shaped completed run.
+
+    Before the fix, completed_at was typed `str | None` while the ORM column
+    is `datetime | None`. Pydantic v2 in lax mode rejects datetime for a str
+    field, which caused PUT /haccp/runs/{id}/complete to return 500 in
+    production. This test fails on the old schema and passes after the fix.
+    """
+    HACCPRunRead.model_validate(
+        {
+            "id": uuid4(),
+            "template_id": uuid4(),
+            "status": "completed",
+            "run_date": date.today(),
+            "completed_at": datetime.now(),
+            "completed_by_user_id": uuid4(),
+            "created_by_user_id": uuid4(),
+        }
+    )
