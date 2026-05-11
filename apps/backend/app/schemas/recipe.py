@@ -74,3 +74,60 @@ class RecipeRead(BaseModel):
 
 class RecipeWithIngredientsRead(RecipeRead):
     ingredients: list[RecipeIngredientRead] = []
+
+
+# --- production preview / confirm --- #
+
+
+class RecipeProductionPreviewRequest(BaseModel):
+    batches: Decimal = Field(gt=Decimal("0"))
+
+
+class RecipeProductionAllocation(BaseModel):
+    """One slice of FEFO consumption from a single lot."""
+
+    lot_id: UUID
+    expiry_date: str | None = None  # ISO date — clients format it
+    quantity_from_lot: Decimal
+    unit_cost: Decimal | None = None
+    unit: str
+
+
+class RecipeProductionPreviewLine(BaseModel):
+    """Per-ingredient outcome of producing N batches of this recipe."""
+
+    ingredient_id: UUID
+    product_id: UUID
+    product_name: str
+    ingredient_unit: str
+    product_unit: str
+    quantity_needed: Decimal
+    available: Decimal
+    shortage: bool
+    unit_mismatch: bool
+    allocations: list[RecipeProductionAllocation] = []
+
+
+class RecipeProductionPreviewResponse(BaseModel):
+    recipe_id: UUID
+    batches: Decimal
+    lines: list[RecipeProductionPreviewLine] = []
+    can_confirm: bool
+
+
+class RecipeProductionConfirmRequest(BaseModel):
+    batches: Decimal = Field(gt=Decimal("0"))
+    notes: str | None = None
+
+
+class RecipeProductionRead(BaseModel):
+    id: UUID
+    restaurant_id: UUID
+    recipe_id: UUID
+    batches: Decimal
+    produced_at: datetime
+    produced_by_user_id: UUID
+    notes: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

@@ -18,6 +18,10 @@ class StockMovement(SQLModel, table=True):
     lot_id: UUID | None = Field(default=None, foreign_key="stock_lots.id", nullable=True)
     kind: str = Field(nullable=False)
     source: str = Field(default=MovementSource.MANUAL, nullable=False)
+    # Polymorphic pointer at the entity that caused this movement —
+    # interpretation depends on `source` (e.g. RECIPE → recipe_productions.id,
+    # OCR → invoices.id). Nullable: legacy MANUAL movements don't have one.
+    source_id: UUID | None = Field(default=None, nullable=True)
     quantity: Decimal = Field(sa_column=sa.Column(sa.NUMERIC(12, 3), nullable=False))
     unit: str = Field(nullable=False)
     reason: str | None = None

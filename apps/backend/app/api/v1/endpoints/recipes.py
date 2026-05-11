@@ -17,10 +17,15 @@ from app.schemas.recipe import (
     RecipeIngredientCreate,
     RecipeIngredientRead,
     RecipeIngredientUpdate,
+    RecipeProductionConfirmRequest,
+    RecipeProductionPreviewRequest,
+    RecipeProductionPreviewResponse,
+    RecipeProductionRead,
     RecipeRead,
     RecipeUpdate,
     RecipeWithIngredientsRead,
 )
+from app.services.recipe_production_service import RecipeProductionService
 from app.services.recipe_service import RecipeService
 
 router = APIRouter(prefix="/restaurants/{restaurant_id}/recipes", tags=["recipes"])
@@ -135,3 +140,53 @@ async def remove_ingredient(
     svc = RecipeService(session)
     await svc.remove_ingredient(membership.restaurant_id, recipe_id, ingredient_id)
     return Response(status_code=204)
+
+
+# --- production: preview + confirm --- #
+
+
+@router.post(
+    "/{recipe_id}/produce/preview",
+    response_model=RecipeProductionPreviewResponse,
+)
+async def produce_preview(
+    recipe_id: UUID,
+    body: RecipeProductionPreviewRequest,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> RecipeProductionPreviewResponse:
+    """Show what stock would be consumed if the user confirms.
+
+    Read-only: never mutates lots or movements. UI uses `can_confirm`
+    to enable/disable the Confirm button and the per-line `shortage`
+    and `unit_mismatch` flags to surface specific issues.
+    """
+    svc = RecipeProductionService(session)
+    return await svc.preview(membership.restaurant_id, recipe_id, body.batches)
+
+
+@router.post(
+    "/{recipe_id}/produce/confirm",
+    response_model=RecipeProductionRead,
+    status_code=201,
+)
+async def produce_confirm(
+    recipe_id: UUID,
+    body: RecipeProductionConfirmRequest,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> RecipeProductionRead:
+    """Persist the production and deduct ingredients via FEFO.
+
+    All-or-nothing: any failure (insufficient stock, unit mismatch,
+    inactive recipe) rolls everything back and returns 4xx.
+    """
+    svc = RecipeProductionService(session)
+    production = await svc.confirm(
+        restaurant_id=membership.restaurant_id,
+        recipe_id=recipe_id,
+        batches=body.batches,
+        produced_by_user_id=membership.user_id,
+        notes=body.notes,
+    )
+    return RecipeProductionRead.model_validate(production)

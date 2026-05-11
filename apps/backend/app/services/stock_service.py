@@ -9,6 +9,7 @@ Rules:
 - SELECT ... FOR UPDATE prevents race conditions on concurrent consume
 """
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
@@ -28,6 +29,18 @@ from app.models.enums import (
 )
 from app.models.stock_lot import StockLot
 from app.models.stock_movement import StockMovement
+
+
+@dataclass(frozen=True)
+class FEFOAllocation:
+    """A proposed deduction from a single lot. Used by previews."""
+
+    lot_id: UUID
+    expiry_date: date | None
+    quantity_from_lot: Decimal
+    unit_cost: Decimal | None
+    unit: str
+
 
 logger = structlog.get_logger(__name__)
 
@@ -91,6 +104,7 @@ class StockService:
         unit: str,
         created_by_user_id: UUID,
         source: MovementSource = MovementSource.MANUAL,
+        source_id: UUID | None = None,
         reason: str | None = None,
         notes: str | None = None,
     ) -> StockMovement:
@@ -100,12 +114,64 @@ class StockService:
             lot_id=lot_id,
             kind=kind,
             source=source,
+            source_id=source_id,
             quantity=quantity,
             unit=unit,
             reason=reason,
             notes=notes,
             created_by_user_id=created_by_user_id,
         )
+
+    async def peek_fefo_allocations(
+        self,
+        restaurant_id: UUID,
+        product_id: UUID,
+        quantity_needed: Decimal,
+    ) -> tuple[list[FEFOAllocation], Decimal]:
+        """Read-only FEFO plan.
+
+        Returns (allocations, total_available). If total_available < quantity_needed
+        the caller is responsible for surfacing the shortage; allocations cover
+        whatever stock IS available so the UI can render a partial preview.
+
+        Does NOT lock the rows (unlike consume()) because the result is shown
+        to the user before they commit. The real consumption re-queries with
+        FOR UPDATE, so concurrent users still get correct totals.
+        """
+        result = await self.session.exec(
+            select(StockLot)
+            .where(
+                StockLot.restaurant_id == restaurant_id,
+                StockLot.product_id == product_id,
+                StockLot.status == LotStatus.ACTIVE,
+                StockLot.quantity_remaining > Decimal("0"),
+            )
+            .order_by(
+                StockLot.expiry_date.asc().nulls_last(),  # type: ignore[union-attr]
+                StockLot.received_date.asc(),  # type: ignore[attr-defined]
+                StockLot.created_at.asc(),  # type: ignore[attr-defined]
+            )
+        )
+        lots = list(result.all())
+        total = sum((lot.quantity_remaining for lot in lots), Decimal("0"))
+
+        allocations: list[FEFOAllocation] = []
+        remaining = quantity_needed
+        for lot in lots:
+            if remaining <= Decimal("0"):
+                break
+            take = min(remaining, lot.quantity_remaining)
+            allocations.append(
+                FEFOAllocation(
+                    lot_id=lot.id,
+                    expiry_date=lot.expiry_date,
+                    quantity_from_lot=take,
+                    unit_cost=lot.unit_cost,
+                    unit=lot.unit,
+                )
+            )
+            remaining -= take
+        return allocations, total
 
     async def receive(
         self,
@@ -174,9 +240,16 @@ class StockService:
         unit: str,
         created_by_user_id: UUID,
         source: MovementSource = MovementSource.MANUAL,
+        source_id: UUID | None = None,
         reason: str | None = None,
     ) -> list[StockMovement]:
-        """Consume stock via FEFO. Raises InsufficientStockError if not enough."""
+        """Consume stock via FEFO. Raises InsufficientStockError if not enough.
+
+        source_id (when provided) lets callers tag every movement created
+        by this consumption with the entity that triggered it (e.g. a
+        recipe_production.id) so audit trails can drill back from the
+        movement to its origin.
+        """
         lots = await self._active_lots_fefo(restaurant_id, product_id)
         available = sum((lot.quantity_remaining for lot in lots), Decimal("0"))
 
@@ -208,6 +281,7 @@ class StockService:
                 unit=unit,
                 created_by_user_id=created_by_user_id,
                 source=source,
+                source_id=source_id,
                 reason=reason,
             )
             self.session.add(movement)

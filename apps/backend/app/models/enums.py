@@ -32,6 +32,7 @@ class MovementSource(StrEnum):
     PURCHASE_LIST = "purchase_list"
     POS = "pos"
     OCR = "ocr"
+    RECIPE = "recipe"
 
 
 class AuditEntity(StrEnum):
