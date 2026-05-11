@@ -22,3 +22,11 @@ class StorageProvider(ABC):
     @abstractmethod
     async def generate_download_url(self, bucket: str, path: str, expires_in: int = 300) -> str:
         """Return a pre-signed URL the client can GET the file from."""
+
+    @abstractmethod
+    async def delete_object(self, bucket: str, path: str) -> None:
+        """Remove an object from the bucket.
+
+        Implementations should be idempotent — deleting a missing object
+        must not raise. The caller treats this as best-effort: it logs
+        and continues if the object was already gone."""

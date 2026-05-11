@@ -9,7 +9,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -394,3 +394,71 @@ async def confirm_invoice(
         raw_ocr_json=invoice.raw_ocr_json,
         download_url=None,
     )
+
+
+_DELETABLE_STATUSES = ("uploaded", "needs_review")
+
+
+@router.delete("/{invoice_id}", status_code=204)
+async def delete_invoice(
+    invoice_id: UUID,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    storage: StorageProvider = Depends(get_storage_provider),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """
+    Delete an invoice and its line items.
+
+    Confirmed invoices (and rejected ones) are immutable audit records and
+    cannot be deleted (409). Uploaded and needs_review invoices can be
+    removed because they have not been turned into stock yet.
+
+    Storage deletion is best-effort: if the object is already gone or the
+    Storage API is briefly unavailable, the DB row is still removed so
+    the user is not stuck with an undeletable invoice. The orphan file
+    (if any) wastes a few KB on Storage; that is preferable to a stuck
+    record pointing at it.
+    """
+    inv_result = await session.exec(
+        select(Invoice).where(
+            Invoice.id == invoice_id,
+            Invoice.restaurant_id == membership.restaurant_id,
+        )
+    )
+    invoice = inv_result.first()
+    if not invoice:
+        raise NotFoundError("Invoice")
+    if invoice.status not in _DELETABLE_STATUSES:
+        raise ConflictError(
+            f"Invoice cannot be deleted in status '{invoice.status}'. "
+            "Only 'uploaded' or 'needs_review' invoices can be deleted."
+        )
+
+    file_path = invoice.file_path
+
+    # App-level cascade: delete child line items in the same transaction
+    # as the parent. The FK has no ON DELETE CASCADE so this must be
+    # explicit. Anything that goes wrong here rolls back the invoice too.
+    items = (
+        await session.exec(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice_id))
+    ).all()
+    for li in items:
+        await session.delete(li)
+    # Flush so the child DELETEs hit the DB before the parent DELETE —
+    # the FK has no ON DELETE CASCADE, so order matters.
+    await session.flush()
+    await session.delete(invoice)
+    await session.commit()
+
+    try:
+        await storage.delete_object(bucket=settings.invoices_bucket, path=file_path)
+    except Exception as exc:
+        # Best-effort: log and continue. The DB row is already gone.
+        logger.warning(
+            "Storage delete failed for invoice %s (path=%s); object may be orphaned: %s",
+            invoice_id,
+            file_path,
+            exc,
+        )
+
+    return Response(status_code=204)

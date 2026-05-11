@@ -42,3 +42,13 @@ class SupabaseStorageProvider(StorageProvider):
         if signed_path.startswith("/"):
             return f"{self._base}/storage/v1{signed_path}"
         return signed_path
+
+    async def delete_object(self, bucket: str, path: str) -> None:
+        # Supabase returns 200 even when the object doesn't exist (it just
+        # echoes an empty result list), so this is naturally idempotent.
+        url = f"{self._base}/storage/v1/object/{bucket}/{path}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.delete(url, headers=self._headers)
+            # 404 is also acceptable — object already gone.
+            if resp.status_code not in (200, 204, 404):
+                resp.raise_for_status()

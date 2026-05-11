@@ -25,7 +25,12 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import app.models  # noqa: F401
-from app.api.v1.endpoints.invoices import confirm_invoice, process_invoice
+from app.api.v1.endpoints.invoices import (
+    confirm_invoice,
+    delete_invoice,
+    process_invoice,
+)
+from app.core.config import settings
 from app.core.exceptions import ChefTraceError, ConflictError, NotFoundError
 from app.integrations.ocr.base import ExtractedInvoice, ExtractedLineItem, OCRProvider
 from app.integrations.ocr.fake_provider import FakeOCRProvider
@@ -444,9 +449,7 @@ async def _seed_review_invoice_with_two_lines(
 
 @pytest.mark.asyncio
 async def test_confirm_happy_path_creates_stock_lots(session, test_data):
-    invoice, line_a, line_b, product = await _seed_review_invoice_with_two_lines(
-        session, test_data
-    )
+    invoice, line_a, line_b, product = await _seed_review_invoice_with_two_lines(session, test_data)
     membership = (
         await session.exec(
             select(RestaurantMembership).where(
@@ -661,3 +664,144 @@ async def confirm_invoke_with_membership(invoice_id, body, membership, session):
     return await confirm_invoice(
         invoice_id=invoice_id, body=body, membership=membership, session=session
     )
+
+
+# --------- delete_invoice --------- #
+
+
+class _ExplodingStorage(FakeStorageProvider):
+    """Storage whose delete fails — verifies best-effort behaviour."""
+
+    async def delete_object(self, bucket: str, path: str) -> None:
+        raise RuntimeError("storage outage")
+
+
+@pytest.mark.asyncio
+async def test_delete_uploaded_invoice_removes_row_and_calls_storage(session, test_data):
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+    storage = FakeStorageProvider()
+
+    response = await delete_invoice(
+        invoice_id=invoice.id,
+        membership=membership,
+        storage=storage,
+        session=session,
+    )
+
+    assert response.status_code == 204
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is None
+    # Storage was asked to delete the file at the same path.
+    assert storage.deleted == [(settings.invoices_bucket, invoice.file_path)]
+
+
+@pytest.mark.asyncio
+async def test_delete_needs_review_invoice_also_deletes_line_items(session, test_data):
+    invoice, line_a, line_b, _product = await _seed_review_invoice_with_two_lines(
+        session, test_data
+    )
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+    assert membership is not None
+
+    response = await delete_invoice(
+        invoice_id=invoice.id,
+        membership=membership,
+        storage=FakeStorageProvider(),
+        session=session,
+    )
+
+    assert response.status_code == 204
+    # Both invoice and its line items are gone (app-level cascade).
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is None
+    items = (
+        await session.exec(
+            select(InvoiceLineItem).where(
+                InvoiceLineItem.id.in_([line_a.id, line_b.id])  # type: ignore[attr-defined]
+            )
+        )
+    ).all()
+    assert list(items) == []
+
+
+@pytest.mark.asyncio
+async def test_delete_confirmed_invoice_returns_409(session, test_data):
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+    invoice.status = "confirmed"
+    session.add(invoice)
+    await session.commit()
+    storage = FakeStorageProvider()
+
+    with pytest.raises(ConflictError):
+        await delete_invoice(
+            invoice_id=invoice.id,
+            membership=membership,
+            storage=storage,
+            session=session,
+        )
+
+    # Row is untouched, storage was never asked to delete.
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is not None
+    assert storage.deleted == []
+
+
+@pytest.mark.asyncio
+async def test_delete_other_tenant_invoice_returns_404(session, test_data):
+    membership = await _make_membership(session, test_data)
+    other = Invoice(
+        restaurant_id=test_data["restaurant_b"],
+        file_path=f"{test_data['restaurant_b']}/x.pdf",
+        status="uploaded",
+        uploaded_by_user_id=test_data["user"],
+    )
+    session.add(other)
+    await session.commit()
+    await session.refresh(other)
+
+    with pytest.raises(NotFoundError):
+        await delete_invoice(
+            invoice_id=other.id,
+            membership=membership,
+            storage=FakeStorageProvider(),
+            session=session,
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete_unknown_invoice_returns_404(session, test_data):
+    membership = await _make_membership(session, test_data)
+
+    with pytest.raises(NotFoundError):
+        await delete_invoice(
+            invoice_id=uuid4(),
+            membership=membership,
+            storage=FakeStorageProvider(),
+            session=session,
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete_succeeds_even_if_storage_delete_fails(session, test_data):
+    """Storage outage must not strand the user with an undeletable invoice."""
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+
+    response = await delete_invoice(
+        invoice_id=invoice.id,
+        membership=membership,
+        storage=_ExplodingStorage(),
+        session=session,
+    )
+
+    assert response.status_code == 204
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is None

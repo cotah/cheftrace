@@ -265,4 +265,6 @@ export const invoicesApi = {
       body,
       token,
     ),
+  delete: (rid: string, id: string, token: string) =>
+    api.delete<void>(`/restaurants/${rid}/invoices/${id}`, token),
 };
