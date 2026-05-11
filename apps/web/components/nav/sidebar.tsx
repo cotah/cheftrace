@@ -7,7 +7,19 @@ import { useRestaurant } from "@/hooks/use-restaurant";
 import { RestaurantSelector } from "@/components/restaurant-selector";
 import { Button } from "@/components/ui/button";
 
-export function Sidebar() {
+export function Sidebar({
+  variant = "desktop",
+  onNavigate,
+}: {
+  /**
+   * `desktop` (default): fixed-width, always-visible at md+ via `hidden md:flex`.
+   * `drawer`: full-height, no border, no breakpoint hiding — rendered inside
+   *   the mobile drawer Dialog. Caller is responsible for visibility.
+   */
+  variant?: "desktop" | "drawer";
+  /** Called after a nav link is clicked. Used by the drawer to close itself. */
+  onNavigate?: () => void;
+} = {}) {
   const pathname = usePathname();
   const { signOut } = useAuth();
   const { restaurants, active, selectRestaurant } = useRestaurant();
@@ -26,8 +38,13 @@ export function Sidebar() {
       ]
     : [];
 
+  const containerClass =
+    variant === "drawer"
+      ? "flex h-full w-full flex-col bg-background p-4"
+      : "hidden h-screen w-60 flex-col border-r bg-background p-4 md:flex";
+
   return (
-    <aside className="flex h-screen w-60 flex-col border-r bg-background p-4">
+    <aside className={containerClass}>
       <div className="mb-6">
         <p className="text-lg font-semibold">ChefTrace</p>
       </div>
@@ -35,7 +52,10 @@ export function Sidebar() {
         <RestaurantSelector
           restaurants={restaurants}
           active={active}
-          onSelect={selectRestaurant}
+          onSelect={(r) => {
+            selectRestaurant(r);
+            onNavigate?.();
+          }}
         />
       </div>
       <nav className="flex flex-1 flex-col gap-1">
@@ -43,6 +63,7 @@ export function Sidebar() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => onNavigate?.()}
             className={`rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent ${
               pathname.startsWith(item.href)
                 ? "bg-accent font-medium"
@@ -56,7 +77,10 @@ export function Sidebar() {
       <Button
         variant="ghost"
         className="justify-start text-muted-foreground"
-        onClick={() => void signOut()}
+        onClick={() => {
+          onNavigate?.();
+          void signOut();
+        }}
       >
         Sign out
       </Button>
