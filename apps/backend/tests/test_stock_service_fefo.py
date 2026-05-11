@@ -753,3 +753,35 @@ async def test_discard_lot_not_found(session, test_data):
             lot_id=uuid4(),
             created_by_user_id=test_data["user"],
         )
+
+
+@pytest.mark.asyncio
+async def test_stock_movement_source_check_constraint_enforced(session, test_data):
+    """Regression guard for the 'recipe' production bug.
+
+    Phase 3 Part 2/3 started writing source='recipe' rows but migration
+    003's CHECK constraint hadn't been updated, so production 500'd
+    while local tests passed. Tests passed because the pytest fixture
+    builds tables via SQLModel.metadata.create_all, which used to skip
+    CHECK constraints declared only in alembic migrations. Mirroring
+    them in StockMovement.__table_args__ closes that gap — this test
+    asserts the mechanism is in place by inserting an invalid `source`
+    value and expecting a DB-level violation.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models.stock_movement import StockMovement
+
+    bad = StockMovement(
+        restaurant_id=test_data["restaurant"],
+        product_id=test_data["product"],
+        lot_id=None,
+        kind=MovementKind.CONSUME,
+        source="not_a_real_source",
+        quantity=Decimal("1"),
+        unit="kg",
+        created_by_user_id=test_data["user"],
+    )
+    session.add(bad)
+    with pytest.raises(IntegrityError):
+        await session.flush()

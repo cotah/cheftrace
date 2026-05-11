@@ -11,6 +11,27 @@ from app.models.enums import MovementSource
 
 class StockMovement(SQLModel, table=True):
     __tablename__ = "stock_movements"
+    # Mirror the CHECK constraints from migrations so the test fixture
+    # (which builds tables via SQLModel.metadata.create_all instead of
+    # running alembic) also enforces them. Keep the value lists in sync
+    # with the latest migration:
+    #   - kind: migration 003 (untouched since)
+    #   - source: migration 003 -> 011 (added 'recipe')
+    #   - unit: migration 003 (untouched since)
+    __table_args__ = (
+        sa.CheckConstraint(
+            "kind IN ('receive','manual_in','manual_out','adjustment','discard','consume')",
+            name="ck_stock_movements_kind",
+        ),
+        sa.CheckConstraint(
+            "source IN ('manual','purchase_list','pos','ocr','recipe')",
+            name="ck_stock_movements_source",
+        ),
+        sa.CheckConstraint(
+            "unit IN ('kg','g','l','ml','unit')",
+            name="ck_stock_movements_unit",
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
