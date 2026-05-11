@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
 import { useRestaurant } from "@/hooks/use-restaurant";
@@ -78,7 +79,7 @@ export default function HACCPPage({
 
   const { data: todayRuns = [] } = useQuery({
     queryKey: ["haccp-runs", rid, today],
-    queryFn: () => haccpApi.listRuns(rid, today, token!),
+    queryFn: () => haccpApi.listRuns(rid, { run_date: today }, token!),
     enabled: !!rid && !!token,
   });
 
@@ -127,16 +128,23 @@ export default function HACCPPage({
             Today — {new Date().toLocaleDateString("en-IE")}
           </p>
         </div>
-        {isOwner && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={reseedMutation.isPending}
-            onClick={() => reseedMutation.mutate()}
-          >
-            {reseedMutation.isPending ? "Updating..." : "Update HACCP Templates"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Link href={`/app/${rid}/haccp/runs`}>
+            <Button variant="outline" size="sm">
+              Runs history
+            </Button>
+          </Link>
+          {isOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reseedMutation.isPending}
+              onClick={() => reseedMutation.mutate()}
+            >
+              {reseedMutation.isPending ? "Updating..." : "Update HACCP Templates"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {reseedBanner && (

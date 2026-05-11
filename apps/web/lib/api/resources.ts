@@ -96,8 +96,24 @@ export const haccpApi = {
   listTemplates: (rid: string, token: string) =>
     api.get<HACCPTemplate[]>(`/restaurants/${rid}/haccp/templates`, token),
 
-  listRuns: (rid: string, date: string, token: string) =>
-    api.get<HACCPRun[]>(`/restaurants/${rid}/haccp/runs?run_date=${date}`, token),
+  listRuns: (
+    rid: string,
+    filters: {
+      run_date?: string;
+      date_from?: string;
+      date_to?: string;
+      status?: string;
+      template_id?: string;
+    },
+    token: string,
+  ) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(filters)) {
+      if (v) qs.set(k, v);
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return api.get<HACCPRun[]>(`/restaurants/${rid}/haccp/runs${suffix}`, token);
+  },
 
   startRun: (
     rid: string,

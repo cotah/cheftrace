@@ -171,6 +171,10 @@ async def create_item(
 async def list_runs(
     membership: CurrentMembership,
     run_date: date | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    status: str | None = None,
+    template_id: UUID | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> list[HACCPChecklistRun]:
     query = select(HACCPChecklistRun).where(
@@ -178,7 +182,15 @@ async def list_runs(
     )
     if run_date:
         query = query.where(HACCPChecklistRun.run_date == run_date)
-    query = query.order_by(HACCPChecklistRun.run_date.desc()).limit(100)  # type: ignore[attr-defined]
+    if date_from:
+        query = query.where(HACCPChecklistRun.run_date >= date_from)
+    if date_to:
+        query = query.where(HACCPChecklistRun.run_date <= date_to)
+    if status:
+        query = query.where(HACCPChecklistRun.status == status)
+    if template_id:
+        query = query.where(HACCPChecklistRun.template_id == template_id)
+    query = query.order_by(HACCPChecklistRun.run_date.desc()).limit(200)  # type: ignore[attr-defined]
     result = await session.exec(query)
     return list(result.all())
 
