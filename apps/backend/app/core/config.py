@@ -42,6 +42,19 @@ class Settings(BaseSettings):
         description="Supabase Storage bucket name for invoice files",
     )
 
+    gemini_api_key: str | None = Field(
+        default=None,
+        description="Google AI Studio API key — required for OCR (Phase 2 Sprint 6+)",
+    )
+    gemini_model: str = Field(
+        default="gemini-2.5-flash",
+        description="Gemini model id used for invoice OCR",
+    )
+    ocr_match_threshold: float = Field(
+        default=70.0,
+        description="rapidfuzz score (0-100) below which a product match is treated as no match",
+    )
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

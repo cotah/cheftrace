@@ -1,13 +1,16 @@
-"""Phase 2 Sprint 5 — invoices model + multi-tenant + fake providers.
+"""Phase 2 Sprint 5 + 6 — invoices model, providers, and /process orchestration.
 
-End-to-end HTTP tests for invoices live in Part 4 when the upload→process→
-confirm flow is wired. For now we cover:
+We cover:
   - FakeStorageProvider contract
   - FakeOCRProvider contract + custom response injection
   - Invoice / InvoiceLineItem ORM round-trip
   - Cross-tenant invoice not visible
   - InvoiceRead Pydantic validates ORM-shaped row (regression for the
     str-vs-datetime drift class)
+  - process_invoice happy path (uploaded → needs_review, line items created)
+  - process_invoice rejects wrong status (409)
+  - process_invoice cross-tenant returns 404
+  - process_invoice rolls back to 'uploaded' if OCR fails
 """
 
 import os
@@ -22,11 +25,15 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import app.models  # noqa: F401
-from app.integrations.ocr.base import ExtractedInvoice, ExtractedLineItem
+from app.api.v1.endpoints.invoices import process_invoice
+from app.core.exceptions import ConflictError, NotFoundError
+from app.integrations.ocr.base import ExtractedInvoice, ExtractedLineItem, OCRProvider
 from app.integrations.ocr.fake_provider import FakeOCRProvider
 from app.integrations.storage.fake_storage import FakeStorageProvider
 from app.models.invoice import Invoice
 from app.models.invoice_line_item import InvoiceLineItem
+from app.models.membership import RestaurantMembership
+from app.models.product import Product
 from app.models.restaurant import Restaurant
 from app.models.user import User
 from app.schemas.invoice import InvoiceLineItemRead, InvoiceRead
@@ -210,3 +217,161 @@ async def test_invoice_line_item_read_validates_orm_shape(session, test_data):
     read = InvoiceLineItemRead.model_validate(item)
     assert read.line_number == 1
     assert read.status == "suggested"
+
+
+# --------- Sprint 6: process_invoice orchestration --------- #
+
+
+async def _make_membership(session, test_data) -> RestaurantMembership:
+    """Manager membership for test_data['restaurant']."""
+    m = RestaurantMembership(
+        restaurant_id=test_data["restaurant"],
+        user_id=test_data["user"],
+        role="manager",
+        is_active=True,
+    )
+    session.add(m)
+    await session.commit()
+    await session.refresh(m)
+    return m
+
+
+async def _make_uploaded_invoice(session, test_data) -> Invoice:
+    inv = Invoice(
+        restaurant_id=test_data["restaurant"],
+        file_path=f"{test_data['restaurant']}/proc.pdf",
+        status="uploaded",
+        uploaded_by_user_id=test_data["user"],
+    )
+    session.add(inv)
+    await session.commit()
+    await session.refresh(inv)
+    return inv
+
+
+@pytest.mark.asyncio
+async def test_process_uploaded_invoice_creates_line_items_and_marks_needs_review(
+    session, test_data
+):
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+    # Seed a product so the normalizer produces at least one match.
+    session.add(
+        Product(
+            restaurant_id=test_data["restaurant"],
+            name="Tomatoes Cherry",
+            unit="kg",
+        )
+    )
+    await session.commit()
+
+    storage = FakeStorageProvider()
+    ocr = FakeOCRProvider()  # default canned response: 2 line items
+
+    result = await process_invoice(
+        invoice_id=invoice.id,
+        membership=membership,
+        storage=storage,
+        ocr=ocr,
+        session=session,
+    )
+
+    assert result.status == "needs_review"
+    assert result.processed_at is not None
+    assert result.supplier_name_raw == "Fresh Foods Ltd"
+    assert len(result.items) == 2
+    # The cherry tomatoes line should be matched to our seeded product.
+    cherry = next(it for it in result.items if "Cherry" in (it.raw_text or ""))
+    assert cherry.suggested_product_id is not None
+
+    # OCR was called with the signed download URL produced by FakeStorageProvider.
+    assert ocr.calls and "fake.storage/download/invoices/" in ocr.calls[0]
+    # The invoice row in DB now reflects the new status.
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is not None
+    assert db_inv.status == "needs_review"
+
+
+@pytest.mark.asyncio
+async def test_process_invoice_in_wrong_status_returns_409(session, test_data):
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+    invoice.status = "needs_review"
+    session.add(invoice)
+    await session.commit()
+
+    with pytest.raises(ConflictError):
+        await process_invoice(
+            invoice_id=invoice.id,
+            membership=membership,
+            storage=FakeStorageProvider(),
+            ocr=FakeOCRProvider(),
+            session=session,
+        )
+
+
+@pytest.mark.asyncio
+async def test_process_invoice_unknown_returns_404(session, test_data):
+    membership = await _make_membership(session, test_data)
+
+    with pytest.raises(NotFoundError):
+        await process_invoice(
+            invoice_id=uuid4(),
+            membership=membership,
+            storage=FakeStorageProvider(),
+            ocr=FakeOCRProvider(),
+            session=session,
+        )
+
+
+@pytest.mark.asyncio
+async def test_process_invoice_other_tenant_returns_404(session, test_data):
+    membership = await _make_membership(session, test_data)
+    # Invoice belongs to restaurant B, membership is for restaurant A.
+    other = Invoice(
+        restaurant_id=test_data["restaurant_b"],
+        file_path=f"{test_data['restaurant_b']}/x.pdf",
+        status="uploaded",
+        uploaded_by_user_id=test_data["user"],
+    )
+    session.add(other)
+    await session.commit()
+    await session.refresh(other)
+
+    with pytest.raises(NotFoundError):
+        await process_invoice(
+            invoice_id=other.id,
+            membership=membership,
+            storage=FakeStorageProvider(),
+            ocr=FakeOCRProvider(),
+            session=session,
+        )
+
+
+class _FailingOCR(OCRProvider):
+    async def extract(self, file_url: str) -> ExtractedInvoice:
+        raise RuntimeError("upstream OCR exploded")
+
+
+@pytest.mark.asyncio
+async def test_process_invoice_ocr_failure_rolls_back_to_uploaded(session, test_data):
+    membership = await _make_membership(session, test_data)
+    invoice = await _make_uploaded_invoice(session, test_data)
+
+    with pytest.raises(ConflictError):
+        await process_invoice(
+            invoice_id=invoice.id,
+            membership=membership,
+            storage=FakeStorageProvider(),
+            ocr=_FailingOCR(),
+            session=session,
+        )
+
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is not None
+    assert db_inv.status == "uploaded"
+    # No line items were persisted on failure.
+    items = (
+        await session.exec(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
+    ).all()
+    assert list(items) == []
