@@ -11,6 +11,22 @@ from app.models.enums import LotStatus
 
 class StockLot(TimestampedBase, table=True):
     __tablename__ = "stock_lots"
+    # Mirror CHECK constraints from migration 003 so the pytest fixture
+    # (SQLModel.metadata.create_all) enforces them like alembic does.
+    __table_args__ = (
+        sa.CheckConstraint(
+            "quantity_remaining >= 0",
+            name="ck_stock_lots_quantity_remaining_non_negative",
+        ),
+        sa.CheckConstraint(
+            "status IN ('active','depleted','expired','discarded')",
+            name="ck_stock_lots_status",
+        ),
+        sa.CheckConstraint(
+            "unit IN ('kg','g','l','ml','unit')",
+            name="ck_stock_lots_unit",
+        ),
+    )
 
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
     product_id: UUID = Field(foreign_key="products.id", nullable=False, index=True)

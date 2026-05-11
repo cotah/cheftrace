@@ -11,6 +11,14 @@ from app.models.enums import InvoiceLineItemStatus
 
 class InvoiceLineItem(TimestampedBase, table=True):
     __tablename__ = "invoice_line_items"
+    # Mirror CHECK constraint from migration 008 so the pytest fixture
+    # (SQLModel.metadata.create_all) enforces it like alembic does.
+    __table_args__ = (
+        sa.CheckConstraint(
+            "status IN ('suggested','confirmed','rejected')",
+            name="ck_invoice_line_items_status",
+        ),
+    )
 
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
     invoice_id: UUID = Field(foreign_key="invoices.id", nullable=False, index=True)

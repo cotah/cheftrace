@@ -9,6 +9,14 @@ from app.models.base import TimestampedBase
 
 class HACCPChecklistItemTemplate(TimestampedBase, table=True):
     __tablename__ = "haccp_checklist_item_templates"
+    # Mirror CHECK constraint from migration 004 so the pytest fixture
+    # (SQLModel.metadata.create_all) enforces it like alembic does.
+    __table_args__ = (
+        sa.CheckConstraint(
+            "item_type IN ('yes_no','temperature','numeric','text','multi_select','single_select')",
+            name="ck_haccp_item_type",
+        ),
+    )
 
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
     template_id: UUID = Field(

@@ -17,6 +17,14 @@ class RecipeProduction(SQLModel, table=True):
     """
 
     __tablename__ = "recipe_productions"
+    # Mirror CHECK constraint from migration 010 so the pytest fixture
+    # (SQLModel.metadata.create_all) enforces it like alembic does.
+    __table_args__ = (
+        sa.CheckConstraint(
+            "batches > 0",
+            name="ck_recipe_productions_batches_positive",
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     restaurant_id: UUID = Field(foreign_key="restaurants.id", nullable=False, index=True)
