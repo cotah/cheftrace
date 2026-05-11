@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useState, type ChangeEvent, type DragEvent } from "react";
+import { use, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Camera } from "lucide-react";
 import { useToken } from "@/hooks/use-token";
 import { invoicesApi } from "@/lib/api/resources";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,10 @@ const ACCEPTED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
+  // iPhone camera output (HEIC) and some Android cameras (HEIF). Gemini
+  // 2.5 Flash supports both; backend `_MIME_EXT` maps them to .heic/.heif.
+  "image/heic",
+  "image/heif",
 ]);
 
 export default function InvoiceUploadPage({
@@ -29,6 +34,11 @@ export default function InvoiceUploadPage({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Drives the camera input — clicking the "Take photo" button forwards to
+  // this hidden <input> so the browser opens the device camera directly on
+  // mobile. On desktop the `capture` attribute is silently ignored and the
+  // file picker opens as a harmless fallback.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   function pick(f: File | null) {
     setError(null);
@@ -95,7 +105,7 @@ export default function InvoiceUploadPage({
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Upload invoice</h1>
         <p className="text-sm text-muted-foreground">
-          PDF or image (JPG / PNG / WEBP), up to 10 MB.
+          PDF or image (JPG / PNG / WEBP / HEIC), up to 10 MB.
         </p>
       </div>
 
@@ -121,10 +131,34 @@ export default function InvoiceUploadPage({
         <input
           type="file"
           className="sr-only"
-          accept=".pdf,image/jpeg,image/png,image/webp"
+          accept=".pdf,image/jpeg,image/png,image/webp,.heic,.heif,image/heic,image/heif"
           onChange={onInputChange}
         />
       </Label>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <p className="text-xs text-muted-foreground">or</p>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        className="sr-only"
+        accept="image/*"
+        capture="environment"
+        onChange={onInputChange}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={() => cameraInputRef.current?.click()}
+      >
+        <Camera />
+        Take photo
+      </Button>
 
       {error && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>

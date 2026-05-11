@@ -47,6 +47,10 @@ _MIME_EXT = {
     "image/jpg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    # iPhone camera defaults to HEIC; some Android cameras emit HEIF.
+    # Gemini 2.5 Flash accepts both natively, so they flow end-to-end.
+    "image/heic": "heic",
+    "image/heif": "heif",
 }
 
 
