@@ -7,6 +7,7 @@ import type {
   HACCPItem,
   HACCPRun,
   HACCPTemplate,
+  IngredientUnit,
   Invoice,
   InvoiceConfirmDecision,
   InvoiceUploadResponse,
@@ -16,6 +17,11 @@ import type {
   PurchaseListItem,
   PurchaseListWithItems,
   ReceiveItemInput,
+  Recipe,
+  RecipeIngredient,
+  RecipeProduction,
+  RecipeProductionPreviewResponse,
+  RecipeWithIngredients,
   StockLot,
   StockMovement,
   Supplier,
@@ -267,4 +273,105 @@ export const invoicesApi = {
     ),
   delete: (rid: string, id: string, token: string) =>
     api.delete<void>(`/restaurants/${rid}/invoices/${id}`, token),
+};
+
+export const recipesApi = {
+  list: (rid: string, token: string, isActive?: boolean) => {
+    const qs = isActive !== undefined ? `?is_active=${isActive}` : "";
+    return api.get<Recipe[]>(`/restaurants/${rid}/recipes${qs}`, token);
+  },
+  create: (
+    rid: string,
+    data: {
+      name: string;
+      yield_quantity: number;
+      yield_unit: string;
+      prep_time_minutes?: number | null;
+      cook_time_minutes?: number | null;
+      instructions?: string | null;
+    },
+    token: string,
+  ) => api.post<Recipe>(`/restaurants/${rid}/recipes`, data, token),
+  get: (rid: string, id: string, token: string) =>
+    api.get<RecipeWithIngredients>(`/restaurants/${rid}/recipes/${id}`, token),
+  update: (
+    rid: string,
+    id: string,
+    data: Partial<{
+      name: string;
+      yield_quantity: number;
+      yield_unit: string;
+      prep_time_minutes: number | null;
+      cook_time_minutes: number | null;
+      instructions: string | null;
+      is_active: boolean;
+    }>,
+    token: string,
+  ) => api.put<Recipe>(`/restaurants/${rid}/recipes/${id}`, data, token),
+  delete: (rid: string, id: string, token: string) =>
+    api.delete<void>(`/restaurants/${rid}/recipes/${id}`, token),
+  addIngredient: (
+    rid: string,
+    recipeId: string,
+    data: {
+      product_id: string;
+      quantity: number;
+      unit: IngredientUnit;
+      notes?: string | null;
+    },
+    token: string,
+  ) =>
+    api.post<RecipeIngredient>(
+      `/restaurants/${rid}/recipes/${recipeId}/ingredients`,
+      data,
+      token,
+    ),
+  updateIngredient: (
+    rid: string,
+    recipeId: string,
+    ingredientId: string,
+    data: Partial<{
+      quantity: number;
+      unit: IngredientUnit;
+      notes: string | null;
+    }>,
+    token: string,
+  ) =>
+    api.put<RecipeIngredient>(
+      `/restaurants/${rid}/recipes/${recipeId}/ingredients/${ingredientId}`,
+      data,
+      token,
+    ),
+  removeIngredient: (
+    rid: string,
+    recipeId: string,
+    ingredientId: string,
+    token: string,
+  ) =>
+    api.delete<void>(
+      `/restaurants/${rid}/recipes/${recipeId}/ingredients/${ingredientId}`,
+      token,
+    ),
+  producePreview: (
+    rid: string,
+    recipeId: string,
+    batches: number,
+    token: string,
+  ) =>
+    api.post<RecipeProductionPreviewResponse>(
+      `/restaurants/${rid}/recipes/${recipeId}/produce/preview`,
+      { batches },
+      token,
+    ),
+  produceConfirm: (
+    rid: string,
+    recipeId: string,
+    data: { batches: number; notes?: string | null },
+    token: string,
+  ) =>
+    api.post<RecipeProduction>(
+      `/restaurants/${rid}/recipes/${recipeId}/produce/confirm`,
+      data,
+      token,
+    ),
 };

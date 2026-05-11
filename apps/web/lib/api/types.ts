@@ -311,3 +311,73 @@ export interface InvoiceConfirmDecision {
   batch_code?: string | null;
   notes?: string | null;
 }
+
+export type IngredientUnit = "kg" | "g" | "l" | "ml" | "unit";
+
+export interface Recipe {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  yield_quantity: number;
+  yield_unit: string;
+  prep_time_minutes: number | null;
+  cook_time_minutes: number | null;
+  instructions: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeIngredient {
+  id: string;
+  recipe_id: string;
+  product_id: string;
+  quantity: number;
+  unit: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecipeWithIngredients extends Recipe {
+  ingredients: RecipeIngredient[];
+}
+
+export interface RecipeProductionAllocation {
+  lot_id: string;
+  expiry_date: string | null;
+  quantity_from_lot: number;
+  unit_cost: number | null;
+  unit: string;
+}
+
+export interface RecipeProductionPreviewLine {
+  ingredient_id: string;
+  product_id: string;
+  product_name: string;
+  ingredient_unit: string;
+  product_unit: string;
+  quantity_needed: number;
+  available: number;
+  shortage: boolean;
+  unit_mismatch: boolean;
+  allocations: RecipeProductionAllocation[];
+}
+
+export interface RecipeProductionPreviewResponse {
+  recipe_id: string;
+  batches: number;
+  lines: RecipeProductionPreviewLine[];
+  can_confirm: boolean;
+}
+
+export interface RecipeProduction {
+  id: string;
+  restaurant_id: string;
+  recipe_id: string;
+  batches: number;
+  produced_at: string;
+  produced_by_user_id: string;
+  notes: string | null;
+  created_at: string;
+}

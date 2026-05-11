@@ -18,6 +18,7 @@ export function Sidebar() {
         { href: `/app/${active.id}/products`, label: "Products" },
         { href: `/app/${active.id}/suppliers`, label: "Suppliers" },
         { href: `/app/${active.id}/stock`, label: "Stock" },
+        { href: `/app/${active.id}/recipes`, label: "Recipes" },
         { href: `/app/${active.id}/invoices`, label: "Invoices" },
         { href: `/app/${active.id}/purchase-lists`, label: "Purchase Lists" },
         { href: `/app/${active.id}/equipment`, label: "Equipment" },
