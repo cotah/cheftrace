@@ -33,6 +33,7 @@ export default function InvoiceUploadPage({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   // Drives the camera input — clicking the "Take photo" button forwards to
   // this hidden <input> so the browser opens the device camera directly on
@@ -40,7 +41,34 @@ export default function InvoiceUploadPage({
   // file picker opens as a harmless fallback.
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  function pick(f: File | null) {
+  async function convertHeicToJpeg(input: File): Promise<File> {
+    // iOS Safari decodes HEIC natively, so createImageBitmap works without
+    // a JS decoder. `imageOrientation: "from-image"` rotates per EXIF — a
+    // 90deg-tilted phone shot would otherwise reach the OCR sideways.
+    const bitmap = await createImageBitmap(input, { imageOrientation: "from-image" });
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Canvas 2D context unavailable");
+      }
+      ctx.drawImage(bitmap, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.92),
+      );
+      if (!blob) {
+        throw new Error("JPEG encoding produced no output");
+      }
+      const newName = input.name.replace(/\.(heic|heif)$/i, ".jpg") || "photo.jpg";
+      return new File([blob], newName, { type: "image/jpeg" });
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  async function pick(f: File | null) {
     setError(null);
     if (!f) {
       setFile(null);
@@ -56,17 +84,38 @@ export default function InvoiceUploadPage({
       setFile(null);
       return;
     }
+
+    // Gemini OCR rejected raw HEIC in production, so transcode to JPEG
+    // before upload. Size limit was already enforced on the original.
+    if (f.type === "image/heic" || f.type === "image/heif") {
+      setConverting(true);
+      try {
+        const jpeg = await convertHeicToJpeg(f);
+        setFile(jpeg);
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? `Couldn't convert the photo to JPEG: ${e.message}. Try taking the photo again.`
+            : "Couldn't convert the photo to JPEG.",
+        );
+        setFile(null);
+      } finally {
+        setConverting(false);
+      }
+      return;
+    }
+
     setFile(f);
   }
 
   function onInputChange(e: ChangeEvent<HTMLInputElement>) {
-    pick(e.target.files?.[0] ?? null);
+    void pick(e.target.files?.[0] ?? null);
   }
 
   function onDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     setDragOver(false);
-    pick(e.dataTransfer.files?.[0] ?? null);
+    void pick(e.dataTransfer.files?.[0] ?? null);
   }
 
   async function upload() {
@@ -121,9 +170,13 @@ export default function InvoiceUploadPage({
         }`}
       >
         <p className="font-medium">
-          {file ? file.name : "Drop a file here, or click to choose"}
+          {converting
+            ? "Converting photo..."
+            : file
+              ? file.name
+              : "Drop a file here, or click to choose"}
         </p>
-        {file && (
+        {file && !converting && (
           <p className="mt-1 text-xs text-muted-foreground">
             {(file.size / 1024).toFixed(0)} KB · {file.type}
           </p>
@@ -154,6 +207,7 @@ export default function InvoiceUploadPage({
         type="button"
         variant="outline"
         className="w-full"
+        disabled={converting}
         onClick={() => cameraInputRef.current?.click()}
       >
         <Camera />
@@ -168,7 +222,10 @@ export default function InvoiceUploadPage({
         <Link href={`/app/${rid}/invoices`}>
           <Button variant="ghost">Cancel</Button>
         </Link>
-        <Button onClick={() => void upload()} disabled={!file || busy || !token}>
+        <Button
+          onClick={() => void upload()}
+          disabled={!file || busy || converting || !token}
+        >
           {busy ? "Uploading..." : "Upload"}
         </Button>
       </div>
