@@ -7,6 +7,10 @@ import type {
   HACCPItem,
   HACCPRun,
   HACCPTemplate,
+  Invoice,
+  InvoiceConfirmDecision,
+  InvoiceUploadResponse,
+  InvoiceWithItems,
   Product,
   PurchaseList,
   PurchaseListItem,
@@ -227,6 +231,38 @@ export const purchaseListsApi = {
     api.post<PurchaseListItem>(
       `/restaurants/${rid}/purchase-lists/${listId}/items/${itemId}/receive`,
       data,
+      token,
+    ),
+};
+
+export const invoicesApi = {
+  list: (rid: string, status: string | undefined, token: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return api.get<Invoice[]>(`/restaurants/${rid}/invoices${qs}`, token);
+  },
+  get: (rid: string, id: string, token: string) =>
+    api.get<InvoiceWithItems>(`/restaurants/${rid}/invoices/${id}`, token),
+  requestUploadUrl: (
+    rid: string,
+    data: { filename: string; mime_type: string },
+    token: string,
+  ) =>
+    api.post<InvoiceUploadResponse>(
+      `/restaurants/${rid}/invoices/upload-url`,
+      data,
+      token,
+    ),
+  process: (rid: string, id: string, token: string) =>
+    api.post<InvoiceWithItems>(`/restaurants/${rid}/invoices/${id}/process`, {}, token),
+  confirm: (
+    rid: string,
+    id: string,
+    body: { items: InvoiceConfirmDecision[] },
+    token: string,
+  ) =>
+    api.post<InvoiceWithItems>(
+      `/restaurants/${rid}/invoices/${id}/confirm`,
+      body,
       token,
     ),
 };

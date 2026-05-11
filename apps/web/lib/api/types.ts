@@ -241,3 +241,73 @@ export interface ReceiveItemInput {
   unit_cost?: number | null;
   notes?: string | null;
 }
+
+export type InvoiceStatus =
+  | "uploaded"
+  | "processing"
+  | "needs_review"
+  | "confirmed"
+  | "rejected";
+
+export type InvoiceLineItemStatus = "suggested" | "confirmed" | "rejected";
+
+export interface Invoice {
+  id: string;
+  restaurant_id: string;
+  supplier_id: string | null;
+  file_path: string;
+  status: InvoiceStatus;
+  uploaded_by_user_id: string;
+  processed_at: string | null;
+  confirmed_at: string | null;
+  supplier_name_raw: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  total_amount: number | null;
+  vat_amount: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  invoice_id: string;
+  line_number: number;
+  raw_text: string | null;
+  suggested_product_id: string | null;
+  confirmed_product_id: string | null;
+  quantity: number | null;
+  unit: string | null;
+  unit_cost: number | null;
+  total_cost: number | null;
+  expiry_date: string | null;
+  batch_code: string | null;
+  status: InvoiceLineItemStatus;
+  notes: string | null;
+}
+
+export interface InvoiceWithItems extends Invoice {
+  items: InvoiceLineItem[];
+  raw_ocr_json: Record<string, unknown> | null;
+  download_url: string | null;
+}
+
+export interface InvoiceUploadResponse {
+  invoice_id: string;
+  upload_url: string;
+  file_path: string;
+  expires_in: number;
+}
+
+export interface InvoiceConfirmDecision {
+  line_item_id: string;
+  action: "confirm" | "reject";
+  confirmed_product_id?: string;
+  quantity?: number;
+  unit?: string;
+  unit_cost?: number | null;
+  expiry_date?: string | null;
+  batch_code?: string | null;
+  notes?: string | null;
+}

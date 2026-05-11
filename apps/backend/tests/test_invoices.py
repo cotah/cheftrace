@@ -25,18 +25,26 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import app.models  # noqa: F401
-from app.api.v1.endpoints.invoices import process_invoice
-from app.core.exceptions import ConflictError, NotFoundError
+from app.api.v1.endpoints.invoices import confirm_invoice, process_invoice
+from app.core.exceptions import ChefTraceError, ConflictError, NotFoundError
 from app.integrations.ocr.base import ExtractedInvoice, ExtractedLineItem, OCRProvider
 from app.integrations.ocr.fake_provider import FakeOCRProvider
 from app.integrations.storage.fake_storage import FakeStorageProvider
+from app.models.enums import MovementSource
 from app.models.invoice import Invoice
 from app.models.invoice_line_item import InvoiceLineItem
 from app.models.membership import RestaurantMembership
 from app.models.product import Product
 from app.models.restaurant import Restaurant
+from app.models.stock_lot import StockLot
+from app.models.stock_movement import StockMovement
 from app.models.user import User
-from app.schemas.invoice import InvoiceLineItemRead, InvoiceRead
+from app.schemas.invoice import (
+    InvoiceConfirmLineItem,
+    InvoiceConfirmRequest,
+    InvoiceLineItemRead,
+    InvoiceRead,
+)
 
 
 @pytest.fixture
@@ -375,3 +383,281 @@ async def test_process_invoice_ocr_failure_rolls_back_to_uploaded(session, test_
         await session.exec(select(InvoiceLineItem).where(InvoiceLineItem.invoice_id == invoice.id))
     ).all()
     assert list(items) == []
+
+
+# --------- Sprint 7: confirm_invoice orchestration --------- #
+
+
+async def _seed_review_invoice_with_two_lines(
+    session, test_data
+) -> tuple[Invoice, InvoiceLineItem, InvoiceLineItem, Product]:
+    """Invoice already past OCR, sitting in 'needs_review' with two suggested lines
+    and one matching product."""
+    membership = await _make_membership(session, test_data)
+    _ = membership
+
+    product = Product(
+        restaurant_id=test_data["restaurant"],
+        name="Tomatoes Cherry",
+        unit="kg",
+    )
+    session.add(product)
+
+    invoice = Invoice(
+        restaurant_id=test_data["restaurant"],
+        file_path=f"{test_data['restaurant']}/conf.pdf",
+        status="needs_review",
+        uploaded_by_user_id=test_data["user"],
+        supplier_name_raw="Fresh Foods Ltd",
+    )
+    session.add(invoice)
+    await session.flush()
+
+    line_a = InvoiceLineItem(
+        restaurant_id=test_data["restaurant"],
+        invoice_id=invoice.id,
+        line_number=1,
+        raw_text="Tomatoes Cherry 500g",
+        suggested_product_id=product.id,
+        quantity=Decimal("2.000"),
+        unit="kg",
+        unit_cost=Decimal("3.5000"),
+        status="suggested",
+    )
+    line_b = InvoiceLineItem(
+        restaurant_id=test_data["restaurant"],
+        invoice_id=invoice.id,
+        line_number=2,
+        raw_text="Mystery item",
+        quantity=Decimal("1.000"),
+        unit="unit",
+        status="suggested",
+    )
+    session.add(line_a)
+    session.add(line_b)
+    await session.commit()
+    await session.refresh(invoice)
+    await session.refresh(line_a)
+    await session.refresh(line_b)
+    return invoice, line_a, line_b, product
+
+
+@pytest.mark.asyncio
+async def test_confirm_happy_path_creates_stock_lots(session, test_data):
+    invoice, line_a, line_b, product = await _seed_review_invoice_with_two_lines(
+        session, test_data
+    )
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+    assert membership is not None
+
+    body = InvoiceConfirmRequest(
+        items=[
+            InvoiceConfirmLineItem(
+                line_item_id=line_a.id,
+                action="confirm",
+                confirmed_product_id=product.id,
+                quantity=Decimal("2.000"),
+                unit="kg",
+                unit_cost=Decimal("3.5000"),
+                expiry_date=date(2026, 6, 1),
+                batch_code="BATCH-1",
+            ),
+            InvoiceConfirmLineItem(
+                line_item_id=line_b.id,
+                action="reject",
+                notes="Not actually purchased",
+            ),
+        ]
+    )
+
+    result = await confirm_invoice(
+        invoice_id=invoice.id,
+        body=body,
+        membership=membership,
+        session=session,
+    )
+
+    assert result.status == "confirmed"
+    assert result.confirmed_at is not None
+    assert {it.status for it in result.items} == {"confirmed", "rejected"}
+
+    # Exactly one StockLot was created (only line_a was confirmed).
+    lots = (
+        await session.exec(
+            select(StockLot).where(StockLot.restaurant_id == test_data["restaurant"])
+        )
+    ).all()
+    lots_list = list(lots)
+    assert len(lots_list) == 1
+    lot = lots_list[0]
+    assert lot.product_id == product.id
+    assert lot.quantity_received == Decimal("2.000")
+    assert lot.unit_cost == Decimal("3.5000")
+    assert lot.expiry_date == date(2026, 6, 1)
+
+    # The receive movement is tagged source=ocr.
+    movements = (
+        await session.exec(select(StockMovement).where(StockMovement.lot_id == lot.id))
+    ).all()
+    moves_list = list(movements)
+    assert len(moves_list) == 1
+    assert moves_list[0].source == MovementSource.OCR
+
+
+@pytest.mark.asyncio
+async def test_confirm_invoice_in_wrong_status_returns_409(session, test_data):
+    invoice, line_a, line_b, _product = await _seed_review_invoice_with_two_lines(
+        session, test_data
+    )
+    invoice.status = "uploaded"
+    session.add(invoice)
+    await session.commit()
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+
+    body = InvoiceConfirmRequest(
+        items=[
+            InvoiceConfirmLineItem(line_item_id=line_a.id, action="reject"),
+            InvoiceConfirmLineItem(line_item_id=line_b.id, action="reject"),
+        ]
+    )
+
+    with pytest.raises(ConflictError):
+        await confirm_invoice(
+            invoice_id=invoice.id, body=body, membership=membership, session=session
+        )
+
+
+@pytest.mark.asyncio
+async def test_confirm_unknown_line_item_returns_400(session, test_data):
+    invoice, line_a, line_b, _product = await _seed_review_invoice_with_two_lines(
+        session, test_data
+    )
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+
+    body = InvoiceConfirmRequest(
+        items=[
+            InvoiceConfirmLineItem(line_item_id=line_a.id, action="reject"),
+            InvoiceConfirmLineItem(line_item_id=line_b.id, action="reject"),
+            InvoiceConfirmLineItem(line_item_id=uuid4(), action="reject"),
+        ]
+    )
+
+    with pytest.raises(ChefTraceError) as ei:
+        await confirm_invoice(
+            invoice_id=invoice.id, body=body, membership=membership, session=session
+        )
+    assert ei.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_confirm_missing_decisions_returns_400(session, test_data):
+    invoice, line_a, _line_b, _product = await _seed_review_invoice_with_two_lines(
+        session, test_data
+    )
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+
+    # Only one decision while there are two line items.
+    body = InvoiceConfirmRequest(
+        items=[InvoiceConfirmLineItem(line_item_id=line_a.id, action="reject")]
+    )
+
+    with pytest.raises(ChefTraceError) as ei:
+        await confirm_invoice(
+            invoice_id=invoice.id, body=body, membership=membership, session=session
+        )
+    assert ei.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_confirm_cross_tenant_product_rejected(session, test_data):
+    invoice, line_a, line_b, _ = await _seed_review_invoice_with_two_lines(session, test_data)
+    membership = (
+        await session.exec(
+            select(RestaurantMembership).where(
+                RestaurantMembership.restaurant_id == test_data["restaurant"]
+            )
+        )
+    ).first()
+
+    # Create a product in restaurant B and try to use it for restaurant A.
+    other_product = Product(
+        restaurant_id=test_data["restaurant_b"],
+        name="Other tenant product",
+        unit="kg",
+    )
+    session.add(other_product)
+    await session.commit()
+
+    body = InvoiceConfirmRequest(
+        items=[
+            InvoiceConfirmLineItem(
+                line_item_id=line_a.id,
+                action="confirm",
+                confirmed_product_id=other_product.id,
+                quantity=Decimal("1"),
+                unit="kg",
+            ),
+            InvoiceConfirmLineItem(line_item_id=line_b.id, action="reject"),
+        ]
+    )
+
+    with pytest.raises(ChefTraceError) as ei:
+        await confirm_invoice(
+            invoice_id=invoice.id, body=body, membership=membership, session=session
+        )
+    assert ei.value.status_code == 400
+    # Invoice still in needs_review (unchanged).
+    db_inv = (await session.exec(select(Invoice).where(Invoice.id == invoice.id))).first()
+    assert db_inv is not None
+    assert db_inv.status == "needs_review"
+
+
+@pytest.mark.asyncio
+async def test_confirm_other_tenant_invoice_returns_404(session, test_data):
+    membership = await _make_membership(session, test_data)
+    other = Invoice(
+        restaurant_id=test_data["restaurant_b"],
+        file_path=f"{test_data['restaurant_b']}/x.pdf",
+        status="needs_review",
+        uploaded_by_user_id=test_data["user"],
+    )
+    session.add(other)
+    await session.commit()
+    await session.refresh(other)
+
+    body = InvoiceConfirmRequest(
+        items=[InvoiceConfirmLineItem(line_item_id=uuid4(), action="reject")]
+    )
+
+    with pytest.raises(NotFoundError):
+        await confirm_invoke_with_membership(other.id, body, membership, session)
+
+
+async def confirm_invoke_with_membership(invoice_id, body, membership, session):
+    return await confirm_invoice(
+        invoice_id=invoice_id, body=body, membership=membership, session=session
+    )

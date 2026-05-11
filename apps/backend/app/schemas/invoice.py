@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class InvoiceUploadRequest(BaseModel):
@@ -64,3 +64,47 @@ class InvoiceWithItemsRead(InvoiceRead):
     items: list[InvoiceLineItemRead] = []
     raw_ocr_json: dict[str, Any] | None = None
     download_url: str | None = None
+
+
+class InvoiceConfirmLineItem(BaseModel):
+    """One decision per OCR'd line item.
+
+    action='confirm' creates a StockLot via StockService.receive — requires
+    confirmed_product_id, quantity and unit. unit_cost / expiry_date / batch_code
+    are optional (forwarded if present).
+
+    action='reject' just marks the line item as rejected. No fields required
+    beyond line_item_id.
+    """
+
+    line_item_id: UUID
+    action: Literal["confirm", "reject"]
+    confirmed_product_id: UUID | None = None
+    quantity: Decimal | None = Field(default=None, ge=0)
+    unit: str | None = None
+    unit_cost: Decimal | None = Field(default=None, ge=0)
+    expiry_date: date | None = None
+    batch_code: str | None = None
+    notes: str | None = None
+
+    @model_validator(mode="after")
+    def _require_fields_when_confirming(self) -> "InvoiceConfirmLineItem":
+        if self.action == "confirm":
+            missing: list[str] = []
+            if self.confirmed_product_id is None:
+                missing.append("confirmed_product_id")
+            if self.quantity is None or self.quantity <= 0:
+                missing.append("quantity (>0)")
+            if not self.unit:
+                missing.append("unit")
+            if missing:
+                raise ValueError(
+                    f"action='confirm' requires {', '.join(missing)} for line {self.line_item_id}"
+                )
+        return self
+
+
+class InvoiceConfirmRequest(BaseModel):
+    """Bulk decisions for all OCR'd line items in an invoice."""
+
+    items: list[InvoiceConfirmLineItem] = Field(..., min_length=1)

@@ -119,8 +119,14 @@ class StockService:
         expiry_date: date | None = None,
         received_date: date | None = None,
         notes: str | None = None,
+        source: MovementSource = MovementSource.MANUAL,
     ) -> StockLot:
-        """Create a new stock lot and record a receive movement."""
+        """Create a new stock lot and record a receive movement.
+
+        `source` tags the movement with its origin (manual entry, OCR
+        invoice confirmation, purchase list reception, etc.) so reports
+        can distinguish how the stock arrived.
+        """
         lot = StockLot(
             restaurant_id=restaurant_id,
             product_id=product_id,
@@ -146,6 +152,7 @@ class StockService:
             quantity=quantity,
             unit=unit,
             created_by_user_id=created_by_user_id,
+            source=source,
         )
         self.session.add(movement)
         await self.session.flush()
