@@ -64,6 +64,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    square_webhook_url: str | None = Field(
+        default=None,
+        description=(
+            "The exact public URL Square is configured to POST webhooks to. "
+            "Square includes this URL in the HMAC signature payload, so the "
+            "verifier needs the bytes-identical value. Example: "
+            "https://example.com/api/v1/webhooks/pos/square"
+        ),
+    )
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

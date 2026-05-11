@@ -35,6 +35,10 @@ class POSWebhookEvent(BaseModel):
     trail can reconstruct what the provider actually sent. `line_items`
     is the adapter's interpretation; downstream code is allowed to trust
     it but the raw is kept as the source of truth.
+
+    `external_location_id` is how we route the event back to the right
+    tenant — providers tag every event with the store/location it came
+    from, and we look up the matching PosIntegration by that id.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -42,6 +46,7 @@ class POSWebhookEvent(BaseModel):
     external_event_id: str
     event_type: str
     external_order_id: str | None = None
+    external_location_id: str | None = None
     line_items: list[POSLineItem] = []
     raw_payload: dict[str, Any]
 

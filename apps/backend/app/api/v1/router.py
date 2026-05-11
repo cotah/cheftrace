@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     stock,
     stock_lots,
     suppliers,
+    webhooks,
 )
 
 api_router = APIRouter()
@@ -38,3 +39,4 @@ api_router.include_router(reports.router)
 api_router.include_router(invoices.router)
 api_router.include_router(recipes.router)
 api_router.include_router(pos.router)
+api_router.include_router(webhooks.router)
