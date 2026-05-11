@@ -70,7 +70,7 @@ export default function NewRecipePage({
               maxLength={200}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Yield quantity</Label>
               <Input
@@ -92,7 +92,7 @@ export default function NewRecipePage({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Prep time (min)</Label>
               <Input

@@ -178,7 +178,7 @@ export default function DashboardPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -187,7 +187,7 @@ export default function DashboardPage({
           </p>
         </div>
         {data.stock_value_eur !== undefined && (
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-2xl font-semibold">
               €{data.stock_value_eur?.toFixed(2) ?? "—"}
             </p>

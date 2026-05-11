@@ -124,7 +124,7 @@ function AddItemDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Quantity</Label>
               <Input
@@ -227,7 +227,7 @@ function ReceiveItemDialog({
               <> · Already received: {item.quantity_received} {item.unit}</>
             )}
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Quantity received</Label>
               <Input
@@ -399,69 +399,71 @@ export default function PurchaseListDetailPage({
           {list.items.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No items yet.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Ordered</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.items.map((item) => {
-                  const product = productMap[item.product_id];
-                  const productName = product?.name ?? item.product_id.slice(0, 8);
-                  const supplierName = item.supplier_id
-                    ? supplierMap[item.supplier_id]
-                    : null;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="font-medium">{productName}</div>
-                        {supplierName && (
-                          <div className="text-xs text-muted-foreground">
-                            from {supplierName}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {item.quantity_ordered}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {item.quantity_received ?? "—"}
-                      </TableCell>
-                      <TableCell>{item.unit}</TableCell>
-                      <TableCell>{itemStatusBadge(item.status)}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        {isDraft && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={deleteItemMutation.isPending}
-                            onClick={() => deleteItemMutation.mutate(item.id)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                        {canReceive && item.status !== "received" && token && (
-                          <ReceiveItemDialog
-                            rid={rid}
-                            listId={listId}
-                            item={item}
-                            productName={productName}
-                            expiryRequired={product?.expiry_required ?? false}
-                            token={token}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Ordered</TableHead>
+                    <TableHead className="text-right">Received</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {list.items.map((item) => {
+                    const product = productMap[item.product_id];
+                    const productName = product?.name ?? item.product_id.slice(0, 8);
+                    const supplierName = item.supplier_id
+                      ? supplierMap[item.supplier_id]
+                      : null;
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="font-medium">{productName}</div>
+                          {supplierName && (
+                            <div className="text-xs text-muted-foreground">
+                              from {supplierName}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {item.quantity_ordered}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {item.quantity_received ?? "—"}
+                        </TableCell>
+                        <TableCell>{item.unit}</TableCell>
+                        <TableCell>{itemStatusBadge(item.status)}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          {isDraft && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deleteItemMutation.isPending}
+                              onClick={() => deleteItemMutation.mutate(item.id)}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                          {canReceive && item.status !== "received" && token && (
+                            <ReceiveItemDialog
+                              rid={rid}
+                              listId={listId}
+                              item={item}
+                              productName={productName}
+                              expiryRequired={product?.expiry_required ?? false}
+                              token={token}
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

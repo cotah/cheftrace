@@ -149,60 +149,62 @@ export default function HACCPRunsHistoryPage({
       ) : runs.length === 0 ? (
         <p className="text-muted-foreground">No runs match the current filters.</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32">Date</TableHead>
-              <TableHead>Template</TableHead>
-              <TableHead className="w-20">Shift</TableHead>
-              <TableHead className="w-32">Status</TableHead>
-              <TableHead className="w-44">Completed at</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {runs.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.run_date}</TableCell>
-                <TableCell className="font-medium">
-                  {templateMap[r.template_id] ?? r.template_id.slice(0, 8)}
-                </TableCell>
-                <TableCell>{r.shift_number ?? "—"}</TableCell>
-                <TableCell>{statusBadge(r.status)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {r.completed_at
-                    ? new Date(r.completed_at).toLocaleString("en-IE", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right space-x-1">
-                  <Link href={`/app/${rid}/haccp/${r.id}`}>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </Link>
-                  {token && r.status === "completed" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        void downloadPdf(
-                          `/restaurants/${rid}/reports/daily-checklist.pdf?run_id=${r.id}`,
-                          token,
-                          `checklist-${r.run_date}-${r.id.slice(0, 8)}.pdf`,
-                        )
-                      }
-                    >
-                      Download PDF
-                    </Button>
-                  )}
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-32">Date</TableHead>
+                <TableHead>Template</TableHead>
+                <TableHead className="w-20">Shift</TableHead>
+                <TableHead className="w-32">Status</TableHead>
+                <TableHead className="w-44">Completed at</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {runs.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.run_date}</TableCell>
+                  <TableCell className="font-medium">
+                    {templateMap[r.template_id] ?? r.template_id.slice(0, 8)}
+                  </TableCell>
+                  <TableCell>{r.shift_number ?? "—"}</TableCell>
+                  <TableCell>{statusBadge(r.status)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {r.completed_at
+                      ? new Date(r.completed_at).toLocaleString("en-IE", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Link href={`/app/${rid}/haccp/${r.id}`}>
+                      <Button variant="ghost" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                    {token && r.status === "completed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          void downloadPdf(
+                            `/restaurants/${rid}/reports/daily-checklist.pdf?run_id=${r.id}`,
+                            token,
+                            `checklist-${r.run_date}-${r.id.slice(0, 8)}.pdf`,
+                          )
+                        }
+                      >
+                        Download PDF
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

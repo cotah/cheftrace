@@ -151,7 +151,7 @@ function IngredientDialog({
               </Select>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Quantity</Label>
               <Input
@@ -387,7 +387,7 @@ export default function RecipeDetailPage({
                   maxLength={200}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Yield quantity</Label>
                   <Input
@@ -407,7 +407,7 @@ export default function RecipeDetailPage({
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Prep time (min)</Label>
                   <Input
@@ -500,74 +500,76 @@ export default function RecipeDetailPage({
               No ingredients yet. Add at least one before producing.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recipe.ingredients.map((ing) => {
-                  const product = productMap[ing.product_id];
-                  const productName = product?.name ?? ing.product_id.slice(0, 8);
-                  const productUnit = product?.unit;
-                  const unitMismatch =
-                    productUnit !== undefined && productUnit !== ing.unit;
-                  return (
-                    <TableRow key={ing.id}>
-                      <TableCell>
-                        <div className="font-medium">{productName}</div>
-                        {unitMismatch && (
-                          <div className="text-xs text-amber-800">
-                            Product unit is {productUnit} — fix before
-                            producing.
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {ing.quantity}
-                      </TableCell>
-                      <TableCell>{ing.unit}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {ing.notes ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {recipe.is_active && token && (
-                          <IngredientDialog
-                            rid={rid}
-                            recipeId={recipeId}
-                            token={token}
-                            existing={ing}
-                            products={products}
-                            trigger={
-                              <Button variant="ghost" size="sm">
-                                Edit
-                              </Button>
-                            }
-                          />
-                        )}
-                        {recipe.is_active && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={removeIngredientMutation.isPending}
-                            onClick={() =>
-                              removeIngredientMutation.mutate(ing.id)
-                            }
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recipe.ingredients.map((ing) => {
+                    const product = productMap[ing.product_id];
+                    const productName = product?.name ?? ing.product_id.slice(0, 8);
+                    const productUnit = product?.unit;
+                    const unitMismatch =
+                      productUnit !== undefined && productUnit !== ing.unit;
+                    return (
+                      <TableRow key={ing.id}>
+                        <TableCell>
+                          <div className="font-medium">{productName}</div>
+                          {unitMismatch && (
+                            <div className="text-xs text-amber-800">
+                              Product unit is {productUnit} — fix before
+                              producing.
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {ing.quantity}
+                        </TableCell>
+                        <TableCell>{ing.unit}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {ing.notes ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {recipe.is_active && token && (
+                            <IngredientDialog
+                              rid={rid}
+                              recipeId={recipeId}
+                              token={token}
+                              existing={ing}
+                              products={products}
+                              trigger={
+                                <Button variant="ghost" size="sm">
+                                  Edit
+                                </Button>
+                              }
+                            />
+                          )}
+                          {recipe.is_active && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={removeIngredientMutation.isPending}
+                              onClick={() =>
+                                removeIngredientMutation.mutate(ing.id)
+                              }
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
           {removeIngredientMutation.isError && (
             <p className="text-sm text-destructive mt-2">

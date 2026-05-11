@@ -80,46 +80,48 @@ export default function RecipesListPage({
           <span className="font-medium">New recipe</span> to create one.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">Yield</TableHead>
-              <TableHead>Prep / cook</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recipes.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell className="text-right font-mono text-sm">
-                  {r.yield_quantity} {r.yield_unit}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {r.prep_time_minutes !== null || r.cook_time_minutes !== null
-                    ? `${r.prep_time_minutes ?? 0} / ${r.cook_time_minutes ?? 0} min`
-                    : "—"}
-                </TableCell>
-                <TableCell>
-                  {r.is_active ? (
-                    <Badge variant="secondary">Active</Badge>
-                  ) : (
-                    <Badge variant="outline">Inactive</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Link href={`/app/${rid}/recipes/${r.id}`}>
-                    <Button variant="outline" size="sm">
-                      Open
-                    </Button>
-                  </Link>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead className="text-right">Yield</TableHead>
+                <TableHead>Prep / cook</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {recipes.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {r.yield_quantity} {r.yield_unit}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {r.prep_time_minutes !== null || r.cook_time_minutes !== null
+                      ? `${r.prep_time_minutes ?? 0} / ${r.cook_time_minutes ?? 0} min`
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {r.is_active ? (
+                      <Badge variant="secondary">Active</Badge>
+                    ) : (
+                      <Badge variant="outline">Inactive</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/app/${rid}/recipes/${r.id}`}>
+                      <Button variant="outline" size="sm">
+                        Open
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

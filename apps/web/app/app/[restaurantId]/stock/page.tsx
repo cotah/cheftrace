@@ -269,51 +269,53 @@ export default function StockPage({
       ) : activeLots.length === 0 ? (
         <p className="text-muted-foreground">No active stock lots.</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Remaining</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead>Received</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {activeLots.map((lot) => {
-              const productName =
-                productMap[lot.product_id] ?? lot.product_id.slice(0, 8);
-              return (
-                <TableRow key={lot.id}>
-                  <TableCell className="font-medium">{productName}</TableCell>
-                  <TableCell>{lot.quantity_remaining}</TableCell>
-                  <TableCell>{lot.unit}</TableCell>
-                  <TableCell>{expiryBadge(lot, warningDays, criticalDays)}</TableCell>
-                  <TableCell>{lot.received_date}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    {token && (
-                      <>
-                        <EditExpiryDialog
-                          rid={rid}
-                          lot={lot}
-                          productName={productName}
-                          token={token}
-                        />
-                        <DiscardDialog
-                          rid={rid}
-                          lot={lot}
-                          productName={productName}
-                          token={token}
-                        />
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Remaining</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead>Received</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activeLots.map((lot) => {
+                const productName =
+                  productMap[lot.product_id] ?? lot.product_id.slice(0, 8);
+                return (
+                  <TableRow key={lot.id}>
+                    <TableCell className="font-medium">{productName}</TableCell>
+                    <TableCell>{lot.quantity_remaining}</TableCell>
+                    <TableCell>{lot.unit}</TableCell>
+                    <TableCell>{expiryBadge(lot, warningDays, criticalDays)}</TableCell>
+                    <TableCell>{lot.received_date}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {token && (
+                        <>
+                          <EditExpiryDialog
+                            rid={rid}
+                            lot={lot}
+                            productName={productName}
+                            token={token}
+                          />
+                          <DiscardDialog
+                            rid={rid}
+                            lot={lot}
+                            productName={productName}
+                            token={token}
+                          />
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

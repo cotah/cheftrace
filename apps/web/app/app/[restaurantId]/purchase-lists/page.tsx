@@ -60,40 +60,42 @@ export default function PurchaseListsPage({
           No purchase lists yet. Click &quot;New list&quot; to create one.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Sent</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lists.map((l) => (
-              <TableRow key={l.id}>
-                <TableCell className="font-medium capitalize">
-                  {l.type.replace("_", " ")}
-                </TableCell>
-                <TableCell>{statusBadge(l.status)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(l.created_at).toLocaleDateString("en-IE")}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {l.sent_at ? new Date(l.sent_at).toLocaleDateString("en-IE") : "—"}
-                </TableCell>
-                <TableCell>
-                  <Link href={`/app/${rid}/purchase-lists/${l.id}`}>
-                    <Button variant="outline" size="sm">
-                      Open
-                    </Button>
-                  </Link>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Sent</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {lists.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell className="font-medium capitalize">
+                    {l.type.replace("_", " ")}
+                  </TableCell>
+                  <TableCell>{statusBadge(l.status)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(l.created_at).toLocaleDateString("en-IE")}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {l.sent_at ? new Date(l.sent_at).toLocaleDateString("en-IE") : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/app/${rid}/purchase-lists/${l.id}`}>
+                      <Button variant="outline" size="sm">
+                        Open
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

@@ -146,53 +146,55 @@ export default function InvoicesListPage({
           No invoices yet. Click <span className="font-medium">Upload invoice</span> to start.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-32">Date</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead className="w-40">Number</TableHead>
-              <TableHead className="w-32 text-right">Total</TableHead>
-              <TableHead className="w-36">Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.map((inv) => {
-              const canDelete = DELETABLE_STATUSES.includes(inv.status);
-              return (
-                <TableRow key={inv.id}>
-                  <TableCell>{inv.invoice_date ?? "—"}</TableCell>
-                  <TableCell className="font-medium">
-                    {inv.supplier_name_raw ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{inv.invoice_number ?? "—"}</TableCell>
-                  <TableCell className="text-right">{formatMoney(inv.total_amount)}</TableCell>
-                  <TableCell>{statusBadge(inv.status)}</TableCell>
-                  <TableCell className="space-x-1 text-right">
-                    <Link href={`/app/${rid}/invoices/${inv.id}`}>
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </Link>
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => requestDelete(inv)}
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-32">Date</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead className="w-40">Number</TableHead>
+                <TableHead className="w-32 text-right">Total</TableHead>
+                <TableHead className="w-36">Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoices.map((inv) => {
+                const canDelete = DELETABLE_STATUSES.includes(inv.status);
+                return (
+                  <TableRow key={inv.id}>
+                    <TableCell>{inv.invoice_date ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {inv.supplier_name_raw ?? (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{inv.invoice_number ?? "—"}</TableCell>
+                    <TableCell className="text-right">{formatMoney(inv.total_amount)}</TableCell>
+                    <TableCell>{statusBadge(inv.status)}</TableCell>
+                    <TableCell className="space-x-1 text-right">
+                      <Link href={`/app/${rid}/invoices/${inv.id}`}>
+                        <Button variant="ghost" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => requestDelete(inv)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Dialog

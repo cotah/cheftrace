@@ -34,15 +34,16 @@ export function ProducePreviewTable({
   preview: RecipeProductionPreviewResponse;
 }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Ingredient</TableHead>
-          <TableHead className="text-right">Needed</TableHead>
-          <TableHead className="text-right">Available</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Ingredient</TableHead>
+            <TableHead className="text-right">Needed</TableHead>
+            <TableHead className="text-right">Available</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
       <TableBody>
         {preview.lines.map((line) => (
           <TableRow key={line.ingredient_id}>
@@ -91,8 +92,9 @@ export function ProducePreviewTable({
             </TableCell>
           </TableRow>
         ))}
-      </TableBody>
-    </Table>
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
