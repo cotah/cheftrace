@@ -7,6 +7,7 @@ secrets are never mixed with regular CRUD payloads.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.pos_event import PosEvent
 from app.models.pos_integration import PosIntegration
+from app.models.pos_item_mapping import PosItemMapping
 
 
 class POSIntegrationCreate(BaseModel):
@@ -132,3 +134,55 @@ class POSEventProcessResponse(BaseModel):
     error_message: str | None = None
     unmapped_item_ids: list[str] = []
     insufficient_product_ids: list[UUID] = []
+
+
+# --- item mappings --- #
+
+
+class POSItemMappingCreate(BaseModel):
+    external_item_id: str = Field(min_length=1, max_length=200)
+    external_item_name_snapshot: str = Field(min_length=1, max_length=200)
+    # `recipe_id is None` is an explicit "ignore this item" mapping.
+    # Different from "no mapping" (NEEDS_MAPPING) — see service comments.
+    recipe_id: UUID | None = None
+    units_per_sale: Decimal = Field(default=Decimal("1.000"), gt=Decimal("0"))
+
+
+class POSItemMappingUpdate(BaseModel):
+    """Partial update.
+
+    The endpoint extracts fields via model_dump(exclude_unset=True) to
+    distinguish "field absent in request" from "field explicitly set
+    to None". The latter is meaningful for recipe_id (= flip to ignore).
+    """
+
+    external_item_name_snapshot: str | None = Field(default=None, min_length=1, max_length=200)
+    recipe_id: UUID | None = None
+    units_per_sale: Decimal | None = Field(default=None, gt=Decimal("0"))
+    is_active: bool | None = None
+
+
+class POSItemMappingRead(BaseModel):
+    id: UUID
+    pos_integration_id: UUID
+    external_item_id: str
+    external_item_name_snapshot: str
+    recipe_id: UUID | None = None
+    units_per_sale: Decimal
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_model(cls, m: PosItemMapping) -> "POSItemMappingRead":
+        return cls(
+            id=m.id,
+            pos_integration_id=m.pos_integration_id,
+            external_item_id=m.external_item_id,
+            external_item_name_snapshot=m.external_item_name_snapshot,
+            recipe_id=m.recipe_id,
+            units_per_sale=m.units_per_sale,
+            is_active=m.is_active,
+            created_at=m.created_at,
+            updated_at=m.updated_at,
+        )

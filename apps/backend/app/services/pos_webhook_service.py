@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy import text
@@ -85,6 +85,11 @@ def status_code_for(outcome: WebhookOutcome) -> int:
 class WebhookResult:
     outcome: WebhookOutcome
     pos_event_id: str | None = None  # set when an INSERT happened
+    # When ACCEPTED, these carry the routing fields the endpoint needs
+    # to schedule the auto-trigger background task. Other outcomes
+    # leave them None (nothing to dispatch).
+    restaurant_id: UUID | None = None
+    user_id_for_processing: UUID | None = None
     detail: str | None = None  # human-readable explanation, useful in logs
 
 
@@ -222,4 +227,57 @@ async def process_pos_webhook(
     return WebhookResult(
         WebhookOutcome.ACCEPTED,
         pos_event_id=str(inserted_row[0]),
+        restaurant_id=integration.restaurant_id,
+        user_id_for_processing=integration.created_by_user_id,
     )
+
+
+# --- auto-trigger (Part 4a) --- #
+
+
+async def run_processor_in_background(
+    event_id: UUID,
+    restaurant_id: UUID,
+    user_id: UUID,
+) -> None:
+    """Open a fresh session and process the event.
+
+    Wired into FastAPI BackgroundTasks by the webhook endpoint. The
+    request-scoped session is already closed by the time this runs, so
+    we acquire a new one from the global factory.
+
+    Failures here never propagate to the user — the webhook response
+    was sent before this fired. The pos_event stays in `pending` and
+    the operator can retry via the UI.
+    """
+    # Imported here to avoid a circular import at module load
+    # (processor service imports back from this module's package).
+    from app.core.database import async_session_factory
+    from app.services.pos_event_processor_service import (
+        POSEventProcessorService,
+    )
+
+    async with async_session_factory() as bg_session:
+        try:
+            processor = POSEventProcessorService(
+                session=bg_session,
+                encryption_key=settings.pos_encryption_key,
+                adapter_factory=get_pos_adapter,
+            )
+            result = await processor.process_event(
+                restaurant_id=restaurant_id,
+                event_id=event_id,
+                user_id=user_id,
+            )
+            logger.info(
+                "pos.webhook.auto_process_complete",
+                event_id=str(event_id),
+                outcome=result.status.value,
+                movements=result.movements_created,
+            )
+        except Exception as exc:
+            logger.exception(
+                "pos.webhook.auto_process_failed",
+                event_id=str(event_id),
+                error=str(exc),
+            )

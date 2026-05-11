@@ -32,6 +32,7 @@ export function Sidebar({
         { href: `/app/${active.id}/stock`, label: "Stock" },
         { href: `/app/${active.id}/recipes`, label: "Recipes" },
         { href: `/app/${active.id}/invoices`, label: "Invoices" },
+        { href: `/app/${active.id}/pos`, label: "POS" },
         { href: `/app/${active.id}/purchase-lists`, label: "Purchase Lists" },
         { href: `/app/${active.id}/equipment`, label: "Equipment" },
         { href: `/app/${active.id}/haccp`, label: "HACCP" },

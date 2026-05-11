@@ -12,6 +12,13 @@ import type {
   InvoiceConfirmDecision,
   InvoiceUploadResponse,
   InvoiceWithItems,
+  POSConfirmationMode,
+  POSEvent,
+  POSEventDetail,
+  POSEventProcessResponse,
+  POSEventStatus,
+  POSIntegration,
+  POSItemMapping,
   Product,
   PurchaseList,
   PurchaseListItem,
@@ -372,6 +379,145 @@ export const recipesApi = {
     api.post<RecipeProduction>(
       `/restaurants/${rid}/recipes/${recipeId}/produce/confirm`,
       data,
+      token,
+    ),
+};
+
+export const posApi = {
+  // Integrations (owner-only)
+  listIntegrations: (rid: string, token: string) =>
+    api.get<POSIntegration[]>(`/restaurants/${rid}/pos/integrations`, token),
+  createIntegration: (
+    rid: string,
+    data: {
+      provider: "square";
+      name: string;
+      external_location_id?: string | null;
+    },
+    token: string,
+  ) =>
+    api.post<POSIntegration>(`/restaurants/${rid}/pos/integrations`, data, token),
+  getIntegration: (rid: string, integrationId: string, token: string) =>
+    api.get<POSIntegration>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}`,
+      token,
+    ),
+  updateIntegration: (
+    rid: string,
+    integrationId: string,
+    data: Partial<{
+      name: string;
+      external_location_id: string | null;
+      confirmation_mode: POSConfirmationMode;
+      is_active: boolean;
+    }>,
+    token: string,
+  ) =>
+    api.put<POSIntegration>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}`,
+      data,
+      token,
+    ),
+  deleteIntegration: (rid: string, integrationId: string, token: string) =>
+    api.delete<void>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}`,
+      token,
+    ),
+  setCredentials: (
+    rid: string,
+    integrationId: string,
+    data: { access_token: string; webhook_signing_key: string },
+    token: string,
+  ) =>
+    api.put<POSIntegration>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}/credentials`,
+      data,
+      token,
+    ),
+
+  // Mappings (MANAGE_STOCK — any role)
+  listMappings: (rid: string, integrationId: string, token: string) =>
+    api.get<POSItemMapping[]>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}/mappings`,
+      token,
+    ),
+  createMapping: (
+    rid: string,
+    integrationId: string,
+    data: {
+      external_item_id: string;
+      external_item_name_snapshot: string;
+      recipe_id?: string | null;
+      units_per_sale?: number;
+    },
+    token: string,
+  ) =>
+    api.post<POSItemMapping>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}/mappings`,
+      data,
+      token,
+    ),
+  updateMapping: (
+    rid: string,
+    integrationId: string,
+    mappingId: string,
+    data: Partial<{
+      external_item_name_snapshot: string;
+      recipe_id: string | null;
+      units_per_sale: number;
+      is_active: boolean;
+    }>,
+    token: string,
+  ) =>
+    api.put<POSItemMapping>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}/mappings/${mappingId}`,
+      data,
+      token,
+    ),
+  deleteMapping: (
+    rid: string,
+    integrationId: string,
+    mappingId: string,
+    token: string,
+  ) =>
+    api.delete<void>(
+      `/restaurants/${rid}/pos/integrations/${integrationId}/mappings/${mappingId}`,
+      token,
+    ),
+
+  // Events (MANAGE_STOCK)
+  listEvents: (
+    rid: string,
+    status: POSEventStatus | undefined,
+    token: string,
+  ) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return api.get<POSEvent[]>(`/restaurants/${rid}/pos/events${qs}`, token);
+  },
+  getEvent: (rid: string, eventId: string, token: string) =>
+    api.get<POSEventDetail>(`/restaurants/${rid}/pos/events/${eventId}`, token),
+  processEvent: (
+    rid: string,
+    eventId: string,
+    force: boolean,
+    token: string,
+  ) => {
+    const qs = force ? "?force=true" : "";
+    return api.post<POSEventProcessResponse>(
+      `/restaurants/${rid}/pos/events/${eventId}/process${qs}`,
+      {},
+      token,
+    );
+  },
+  dismissEvent: (
+    rid: string,
+    eventId: string,
+    reason: string,
+    token: string,
+  ) =>
+    api.post<POSEventProcessResponse>(
+      `/restaurants/${rid}/pos/events/${eventId}/dismiss`,
+      { reason },
       token,
     ),
 };

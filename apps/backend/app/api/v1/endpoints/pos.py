@@ -19,8 +19,12 @@ from app.schemas.pos import (
     POSIntegrationRead,
     POSIntegrationSetCredentials,
     POSIntegrationUpdate,
+    POSItemMappingCreate,
+    POSItemMappingRead,
+    POSItemMappingUpdate,
 )
 from app.services.pos_integration_service import POSIntegrationService
+from app.services.pos_mapping_service import POSItemMappingService
 
 router = APIRouter(
     prefix="/restaurants/{restaurant_id}/pos/integrations",
@@ -136,3 +140,92 @@ async def set_pos_credentials(
         webhook_signing_key=data.webhook_signing_key,
     )
     return POSIntegrationRead.from_model(row)
+
+
+# --- item mappings (nested under integration) --- #
+#
+# Owner-only would prevent managers from fixing a mistyped mapping in
+# the middle of service — MANAGE_STOCK lets manager and chef adjust
+# mappings without giving them credential / mode control.
+
+
+@router.get(
+    "/{integration_id}/mappings",
+    response_model=list[POSItemMappingRead],
+)
+async def list_pos_mappings(
+    integration_id: UUID,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> list[POSItemMappingRead]:
+    svc = POSItemMappingService(session)
+    rows = await svc.list_mappings(membership.restaurant_id, integration_id)
+    return [POSItemMappingRead.from_model(r) for r in rows]
+
+
+@router.post(
+    "/{integration_id}/mappings",
+    response_model=POSItemMappingRead,
+    status_code=201,
+)
+async def create_pos_mapping(
+    integration_id: UUID,
+    data: POSItemMappingCreate,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> POSItemMappingRead:
+    svc = POSItemMappingService(session)
+    row = await svc.create_mapping(
+        restaurant_id=membership.restaurant_id,
+        integration_id=integration_id,
+        external_item_id=data.external_item_id,
+        external_item_name_snapshot=data.external_item_name_snapshot,
+        recipe_id=data.recipe_id,
+        units_per_sale=data.units_per_sale,
+    )
+    return POSItemMappingRead.from_model(row)
+
+
+@router.put(
+    "/{integration_id}/mappings/{mapping_id}",
+    response_model=POSItemMappingRead,
+)
+async def update_pos_mapping(
+    integration_id: UUID,
+    mapping_id: UUID,
+    data: POSItemMappingUpdate,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> POSItemMappingRead:
+    """Partial update.
+
+    `exclude_unset=True` is what lets the caller flip recipe_id to NULL
+    explicitly (ignore-state) without that being indistinguishable from
+    "leave it alone". Pydantic v2 default None is ambiguous otherwise.
+    """
+    svc = POSItemMappingService(session)
+    update_fields = data.model_dump(exclude_unset=True)
+    row = await svc.update_mapping(
+        restaurant_id=membership.restaurant_id,
+        integration_id=integration_id,
+        mapping_id=mapping_id,
+        update=update_fields,
+    )
+    return POSItemMappingRead.from_model(row)
+
+
+@router.delete(
+    "/{integration_id}/mappings/{mapping_id}",
+    status_code=204,
+)
+async def delete_pos_mapping(
+    integration_id: UUID,
+    mapping_id: UUID,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_STOCK)),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Soft delete (is_active=False). Past pos_events keep their FK
+    integrity and the audit trail."""
+    svc = POSItemMappingService(session)
+    await svc.delete_mapping(membership.restaurant_id, integration_id, mapping_id)
+    return Response(status_code=204)

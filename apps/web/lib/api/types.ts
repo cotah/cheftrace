@@ -381,3 +381,69 @@ export interface RecipeProduction {
   notes: string | null;
   created_at: string;
 }
+
+// --- POS (Phase 4) ---
+
+export type POSConfirmationMode = "manual" | "auto";
+
+export type POSEventStatus =
+  | "pending"
+  | "needs_mapping"
+  | "pending_approval"
+  | "processed"
+  | "insufficient_stock"
+  | "failed"
+  | "ignored";
+
+export interface POSIntegration {
+  id: string;
+  restaurant_id: string;
+  provider: "square";
+  name: string;
+  external_location_id: string | null;
+  confirmation_mode: POSConfirmationMode;
+  is_active: boolean;
+  last_sync_at: string | null;
+  has_access_token: boolean;
+  has_webhook_signing_key: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface POSItemMapping {
+  id: string;
+  pos_integration_id: string;
+  external_item_id: string;
+  external_item_name_snapshot: string;
+  recipe_id: string | null;
+  units_per_sale: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface POSEvent {
+  id: string;
+  pos_integration_id: string;
+  provider: string;
+  external_event_id: string;
+  external_order_id: string | null;
+  event_type: string;
+  processing_status: POSEventStatus;
+  processed_at: string | null;
+  error_message: string | null;
+  received_at: string;
+  created_at: string;
+}
+
+export interface POSEventDetail extends POSEvent {
+  raw_payload: Record<string, unknown>;
+}
+
+export interface POSEventProcessResponse {
+  status: POSEventStatus;
+  movements_created: number;
+  error_message: string | null;
+  unmapped_item_ids: string[];
+  insufficient_product_ids: string[];
+}
