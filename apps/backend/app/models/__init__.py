@@ -12,6 +12,8 @@ from app.models.membership import RestaurantMembership
 from app.models.product import Product
 from app.models.purchase_list import PurchaseList
 from app.models.purchase_list_item import PurchaseListItem
+from app.models.recipe import Recipe
+from app.models.recipe_ingredient import RecipeIngredient
 from app.models.restaurant import Restaurant
 from app.models.stock_lot import StockLot
 from app.models.stock_movement import StockMovement
@@ -32,6 +34,8 @@ __all__ = [
     "ProductCategory",
     "PurchaseList",
     "PurchaseListItem",
+    "Recipe",
+    "RecipeIngredient",
     "Restaurant",
     "RestaurantMembership",
     "StockLot",
