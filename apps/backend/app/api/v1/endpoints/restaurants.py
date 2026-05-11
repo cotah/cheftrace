@@ -34,9 +34,9 @@ router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 async def list_my_restaurants(
     current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
-) -> list[Restaurant]:
+) -> list[RestaurantRead]:
     result = await session.exec(
-        select(Restaurant)
+        select(Restaurant, RestaurantMembership)
         .join(
             RestaurantMembership,
             RestaurantMembership.restaurant_id == Restaurant.id,  # type: ignore[arg-type]
@@ -47,7 +47,10 @@ async def list_my_restaurants(
             Restaurant.is_active.is_(True),  # type: ignore[attr-defined]
         )
     )
-    return list(result.all())
+    return [
+        RestaurantRead.model_validate(restaurant).model_copy(update={"role": membership.role})
+        for restaurant, membership in result.all()
+    ]
 
 
 @router.post("", response_model=RestaurantRead, status_code=201)
@@ -83,12 +86,12 @@ async def create_restaurant(
 async def get_restaurant(
     membership: CurrentMembership,
     session: AsyncSession = Depends(get_session),
-) -> Restaurant:
+) -> RestaurantRead:
     result = await session.exec(select(Restaurant).where(Restaurant.id == membership.restaurant_id))
     restaurant = result.first()
     if not restaurant:
         raise NotFoundError("Restaurant")
-    return restaurant
+    return RestaurantRead.model_validate(restaurant).model_copy(update={"role": membership.role})
 
 
 @router.put("/{restaurant_id}", response_model=RestaurantRead)

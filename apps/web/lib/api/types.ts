@@ -7,6 +7,7 @@ export interface Restaurant {
   currency: string;
   expiry_warning_days: number;
   critical_expiry_days: number;
+  role?: string | null;
 }
 
 export interface Category {

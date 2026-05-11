@@ -25,6 +25,7 @@ class RestaurantRead(BaseModel):
     currency: str
     expiry_warning_days: int
     critical_expiry_days: int
+    role: str | None = None  # current user's role in this restaurant; null if context unknown
 
     model_config = {"from_attributes": True}
 

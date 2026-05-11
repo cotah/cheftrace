@@ -1,9 +1,10 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToken } from "@/hooks/use-token";
+import { useRestaurant } from "@/hooks/use-restaurant";
 import { haccpApi } from "@/lib/api/resources";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,11 +37,43 @@ export default function HACCPPage({
   const token = useToken();
   const router = useRouter();
   const qc = useQueryClient();
+  const { active } = useRestaurant();
+  const isOwner = active?.role === "owner";
+
+  const [reseedBanner, setReseedBanner] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!reseedBanner) return;
+    const t = setTimeout(() => setReseedBanner(null), 5000);
+    return () => clearTimeout(t);
+  }, [reseedBanner]);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["haccp-templates", rid],
     queryFn: () => haccpApi.listTemplates(rid, token!),
     enabled: !!rid && !!token,
+  });
+
+  const reseedMutation = useMutation({
+    mutationFn: () => haccpApi.reseedTemplates(rid, token!),
+    onSuccess: (result) => {
+      const created = result.created.length;
+      const skipped = result.skipped.length;
+      setReseedBanner({
+        kind: "ok",
+        text:
+          created === 0
+            ? `All FSAI templates already in place (${skipped} existed).`
+            : `Created ${created} new template${created === 1 ? "" : "s"}, ${skipped} already existed.`,
+      });
+      void qc.invalidateQueries({ queryKey: ["haccp-templates", rid] });
+    },
+    onError: (err: Error) => {
+      setReseedBanner({ kind: "error", text: err.message });
+    },
   });
 
   const { data: todayRuns = [] } = useQuery({
@@ -87,14 +120,36 @@ export default function HACCPPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">HACCP</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Today — {new Date().toLocaleDateString("en-IE")}
           </p>
         </div>
+        {isOwner && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={reseedMutation.isPending}
+            onClick={() => reseedMutation.mutate()}
+          >
+            {reseedMutation.isPending ? "Updating..." : "Update HACCP Templates"}
+          </Button>
+        )}
       </div>
+
+      {reseedBanner && (
+        <div
+          className={
+            reseedBanner.kind === "ok"
+              ? "rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+              : "rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          }
+        >
+          {reseedBanner.text}
+        </div>
+      )}
 
       {templates.length === 0 ? (
         <Card>

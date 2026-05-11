@@ -119,6 +119,13 @@ export const haccpApi = {
 
   completeRun: (rid: string, runId: string, token: string) =>
     api.put<HACCPRun>(`/restaurants/${rid}/haccp/runs/${runId}/complete`, {}, token),
+
+  reseedTemplates: (rid: string, token: string) =>
+    api.post<{ created: string[]; skipped: string[] }>(
+      `/restaurants/${rid}/haccp/seed-templates`,
+      {},
+      token,
+    ),
 };
 
 export const purchaseListsApi = {

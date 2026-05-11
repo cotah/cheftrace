@@ -13,6 +13,7 @@ export interface Restaurant {
   currency: string;
   expiry_warning_days: number;
   critical_expiry_days: number;
+  role?: string | null;
 }
 
 const STORAGE_KEY = "cheftrace_active_restaurant";
