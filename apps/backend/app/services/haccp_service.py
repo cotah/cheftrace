@@ -568,7 +568,7 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
     # ------------------------------------------------------------------
     {
         "name": "SC6 — Staff Hygiene Training Record",
-        "frequency": "on_delivery",
+        "frequency": "monthly",
         "is_equipment_dynamic": False,
         "items": [
             {
@@ -628,7 +628,7 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
     # ------------------------------------------------------------------
     {
         "name": "SC7 — Fitness to Work Assessment",
-        "frequency": "on_delivery",
+        "frequency": "monthly",
         "is_equipment_dynamic": False,
         "items": [
             {
@@ -703,7 +703,7 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
     # ------------------------------------------------------------------
     {
         "name": "Allergen Record",
-        "frequency": "on_delivery",
+        "frequency": "monthly",
         "is_equipment_dynamic": False,
         "items": [
             {
@@ -928,7 +928,7 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
     # ------------------------------------------------------------------
     {
         "name": "Accident and Incident Record",
-        "frequency": "on_delivery",
+        "frequency": "monthly",
         "is_equipment_dynamic": False,
         "items": [
             {
