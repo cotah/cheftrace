@@ -99,7 +99,7 @@ async def equipment_item(session, test_data):
 
 
 @pytest.mark.asyncio
-async def test_seed_templates_creates_ten(session, test_data):
+async def test_seed_templates_creates_fifteen(session, test_data):
     svc = HACCPService(session)
     await svc.create_seed_templates(test_data["restaurant"], test_data["user"])
     result = await session.exec(
@@ -108,7 +108,7 @@ async def test_seed_templates_creates_ten(session, test_data):
         )
     )
     templates = list(result.all())
-    assert len(templates) == 10
+    assert len(templates) == 15
 
 
 @pytest.mark.asyncio
@@ -133,6 +133,12 @@ async def test_seed_templates_names(session, test_data):
     assert "SC4 — Hot Hold/Display Record" in names
     assert "SC6 — Staff Hygiene Training Record" in names
     assert "SC7 — Fitness to Work Assessment" in names
+    # Irish regulatory additions (outside FSAI SC1-SC8)
+    assert "Allergen Record" in names
+    assert "Fire Safety Check" in names
+    assert "Pest Control Log" in names
+    assert "Accident and Incident Record" in names
+    assert "Opening and Closing Safety Check" in names
 
 
 @pytest.mark.asyncio
@@ -246,14 +252,14 @@ async def test_reseed_idempotent(session, test_data):
     created1, skipped1 = await svc.reseed_missing_templates(
         test_data["restaurant"], test_data["user"]
     )
-    assert len(created1) == 10
+    assert len(created1) == 15
     assert skipped1 == []
 
     created2, skipped2 = await svc.reseed_missing_templates(
         test_data["restaurant"], test_data["user"]
     )
     assert created2 == []
-    assert len(skipped2) == 10
+    assert len(skipped2) == 15
 
 
 @pytest.mark.asyncio
@@ -288,15 +294,15 @@ async def test_reseed_adds_only_missing(session, test_data):
         test_data["restaurant"], test_data["user"]
     )
     assert created == ["SC6 — Staff Hygiene Training Record"]
-    assert len(skipped) == 9
+    assert len(skipped) == 14
 
-    # Final state: 10 templates again
+    # Final state: 15 templates again
     result = await session.exec(
         select(HACCPChecklistTemplate).where(
             HACCPChecklistTemplate.restaurant_id == test_data["restaurant"]
         )
     )
-    assert len(list(result.all())) == 10
+    assert len(list(result.all())) == 15
 
 
 @pytest.mark.asyncio

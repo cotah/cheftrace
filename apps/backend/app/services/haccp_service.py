@@ -694,6 +694,358 @@ SEED_TEMPLATES: list[dict[str, Any]] = [
             },
         ],
     },
+    # ------------------------------------------------------------------
+    # Irish regulatory additions (outside FSAI SC1-SC8 pack)
+    # Required by Irish food / fire / health-and-safety / employment law.
+    # ------------------------------------------------------------------
+    # Allergen Record — EU Reg. 1169/2011 (FIC) + S.I. No. 489/2014.
+    # 14 declarable allergens recorded per dish/product.
+    # ------------------------------------------------------------------
+    {
+        "name": "Allergen Record",
+        "frequency": "on_delivery",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Dish / product name",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Contains gluten (cereals — wheat, rye, barley, oats)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Contains crustaceans?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Contains eggs?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "Contains fish?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "Contains peanuts?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 7,
+                "question": "Contains soybeans?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 8,
+                "question": "Contains milk / dairy (including lactose)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 9,
+                "question": "Contains nuts (almonds, hazelnuts, walnuts, cashews, pecans, brazils, pistachios, macadamia)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 10,
+                "question": "Contains celery?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 11,
+                "question": "Contains mustard?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 12,
+                "question": "Contains sesame?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 13,
+                "question": "Contains sulphur dioxide / sulphites (>10 mg/kg or >10 mg/L)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 14,
+                "question": "Contains lupin?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 15,
+                "question": "Contains molluscs?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 16,
+                "question": "Supplier / source of information (ingredient label, supplier spec, recipe)",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 17,
+                "question": "Verified by (staff member name)",
+                "item_type": "text",
+                "is_required": True,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # Fire Safety Check — Fire Services Acts 1981/2003 + S.I. 191/2006.
+    # ------------------------------------------------------------------
+    {
+        "name": "Fire Safety Check",
+        "frequency": "daily",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Emergency exits clear and unobstructed?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Fire extinguishers accessible and in date?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Smoke detectors functioning (test button or indicator light)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Evacuation routes posted and visible?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "Electrical equipment safe — no exposed wires or damage?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "Fire doors closed and unobstructed?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 7,
+                "question": "Corrective action taken (if any item above failed)",
+                "item_type": "text",
+                "is_required": False,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # Pest Control Log — EC No. 852/2004 Annex II Ch. IX, FSAI guidance.
+    # ------------------------------------------------------------------
+    {
+        "name": "Pest Control Log",
+        "frequency": "weekly",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Signs of rodents observed (droppings, gnaw marks, grease tracks)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Signs of insects or flies observed?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Bait stations checked?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Bait station condition",
+                "item_type": "single_select",
+                "is_required": True,
+                "options_json": {
+                    "options": [
+                        "OK",
+                        "Damaged",
+                        "Replaced",
+                        "Empty",
+                    ]
+                },
+            },
+            {
+                "order_index": 5,
+                "question": "Evidence found (droppings, feathers, webbing, nesting material)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "Pest control contractor contacted (if required)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 7,
+                "question": "Observations and corrective action",
+                "item_type": "text",
+                "is_required": False,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # Accident and Incident Record — Safety, Health and Welfare at Work
+    # Act 2005 + S.I. 299/2007 (HSA reportable incidents).
+    # ------------------------------------------------------------------
+    {
+        "name": "Accident and Incident Record",
+        "frequency": "on_delivery",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Date and time of incident (YYYY-MM-DD HH:MM)",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Name of person involved",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Description of what happened",
+                "item_type": "text",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Injury or illness sustained?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "First aid treatment given (describe)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 6,
+                "question": "Witnesses present (names)",
+                "item_type": "text",
+                "is_required": False,
+            },
+            {
+                "order_index": 7,
+                "question": "Manager notified?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 8,
+                "question": "HSA reportable incident (absent >3 consecutive days, fatality, dangerous occurrence)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 9,
+                "question": "Preventive action to avoid recurrence",
+                "item_type": "text",
+                "is_required": True,
+            },
+        ],
+    },
+    # ------------------------------------------------------------------
+    # Opening and Closing Safety Check — general H&S walk (distinct from
+    # FSAI Opening/Closing Check which focus on food-hygiene CCPs).
+    # ------------------------------------------------------------------
+    {
+        "name": "Opening and Closing Safety Check",
+        "frequency": "daily",
+        "is_equipment_dynamic": False,
+        "items": [
+            {
+                "order_index": 1,
+                "question": "Floors dry and free from slip hazards?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 2,
+                "question": "Chemicals correctly labelled and stored away from food?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 3,
+                "question": "Knives and equipment in safe condition (no loose handles, damaged guards)?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 4,
+                "question": "Waste removed and bins clean?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 5,
+                "question": "Doors and windows secure?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 6,
+                "question": "All equipment switched off or set correctly?",
+                "item_type": "yes_no",
+                "is_required": True,
+            },
+            {
+                "order_index": 7,
+                "question": "Alarm set (closing only — leave blank at opening)?",
+                "item_type": "yes_no",
+                "is_required": False,
+            },
+            {
+                "order_index": 8,
+                "question": "Any issues to report to next shift?",
+                "item_type": "text",
+                "is_required": False,
+            },
+        ],
+    },
 ]
 
 
