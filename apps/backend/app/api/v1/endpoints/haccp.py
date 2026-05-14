@@ -23,6 +23,7 @@ from app.schemas.haccp import (
     HACCPItemRead,
     HACCPRunCreate,
     HACCPRunRead,
+    HACCPTemplateActiveUpdate,
     HACCPTemplateCreate,
     HACCPTemplateRead,
 )
@@ -55,14 +56,15 @@ async def reseed_templates(
 @router.get("/templates", response_model=list[HACCPTemplateRead])
 async def list_templates(
     membership: CurrentMembership,
+    include_inactive: bool = False,
     session: AsyncSession = Depends(get_session),
 ) -> list[HACCPChecklistTemplate]:
-    result = await session.exec(
-        select(HACCPChecklistTemplate).where(
-            HACCPChecklistTemplate.restaurant_id == membership.restaurant_id,
-            HACCPChecklistTemplate.is_active == True,  # noqa: E712
-        )
+    query = select(HACCPChecklistTemplate).where(
+        HACCPChecklistTemplate.restaurant_id == membership.restaurant_id,
     )
+    if not include_inactive:
+        query = query.where(HACCPChecklistTemplate.is_active == True)  # noqa: E712
+    result = await session.exec(query)
     return list(result.all())
 
 
@@ -101,6 +103,30 @@ async def update_template(
         raise NotFoundError("HACCPChecklistTemplate")
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(template, field, value)
+    session.add(template)
+    await session.commit()
+    await session.refresh(template)
+    return template
+
+
+@router.patch("/templates/{template_id}/active", response_model=HACCPTemplateRead)
+async def set_template_active(
+    template_id: UUID,
+    data: HACCPTemplateActiveUpdate,
+    membership: RestaurantMembership = Depends(require_permission(Permission.MANAGE_HACCP)),
+    session: AsyncSession = Depends(get_session),
+) -> HACCPChecklistTemplate:
+    """Toggle a template's is_active flag. Idempotent."""
+    result = await session.exec(
+        select(HACCPChecklistTemplate).where(
+            HACCPChecklistTemplate.id == template_id,
+            HACCPChecklistTemplate.restaurant_id == membership.restaurant_id,
+        )
+    )
+    template = result.first()
+    if not template:
+        raise NotFoundError("HACCPChecklistTemplate")
+    template.is_active = data.is_active
     session.add(template)
     await session.commit()
     await session.refresh(template)

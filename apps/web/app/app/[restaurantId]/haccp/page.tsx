@@ -40,6 +40,7 @@ export default function HACCPPage({
   const qc = useQueryClient();
   const { active } = useRestaurant();
   const isOwner = active?.role === "owner";
+  const canToggle = active?.role === "owner" || active?.role === "manager";
 
   const [reseedBanner, setReseedBanner] = useState<{
     kind: "ok" | "error";
@@ -53,9 +54,17 @@ export default function HACCPPage({
   }, [reseedBanner]);
 
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ["haccp-templates", rid],
-    queryFn: () => haccpApi.listTemplates(rid, token!),
+    queryKey: ["haccp-templates", rid, "with-inactive"],
+    queryFn: () => haccpApi.listTemplates(rid, token!, { includeInactive: true }),
     enabled: !!rid && !!token,
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ templateId, isActive }: { templateId: string; isActive: boolean }) =>
+      haccpApi.setTemplateActive(rid, templateId, isActive, token!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["haccp-templates", rid, "with-inactive"] });
+    },
   });
 
   const reseedMutation = useMutation({
@@ -174,9 +183,10 @@ export default function HACCPPage({
               const shiftNum = t.frequency === "shift" ? i + 1 : undefined;
               const key = `${t.id}-${shiftNum ?? 0}`;
               const run = runsMap[key];
+              const inactive = !t.is_active;
 
               return (
-                <Card key={key}>
+                <Card key={key} className={inactive ? "opacity-60 bg-muted/30" : undefined}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">
@@ -186,44 +196,77 @@ export default function HACCPPage({
                             Shift {shiftNum}
                           </span>
                         )}
+                        {inactive && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Disabled
+                          </Badge>
+                        )}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
                           {frequencyLabel(t)}
                         </span>
-                        {run ? runStatusBadge(run.status) : <Badge variant="outline">Pending</Badge>}
+                        {!inactive &&
+                          (run ? (
+                            runStatusBadge(run.status)
+                          ) : (
+                            <Badge variant="outline">Pending</Badge>
+                          ))}
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {run?.status === "completed" ? (
-                      <p className="text-sm text-muted-foreground">
-                        Completed
-                        {run.completed_at
-                          ? ` at ${new Date(run.completed_at).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}`
-                          : ""}
-                      </p>
-                    ) : run?.status === "in_progress" ? (
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/app/${rid}/haccp/${run.id}`)}
-                      >
-                        Continue
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        disabled={startMutation.isPending}
-                        onClick={() =>
-                          startMutation.mutate({
-                            templateId: t.id,
-                            shiftNumber: shiftNum,
-                          })
-                        }
-                      >
-                        Start
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        {inactive ? (
+                          <p className="text-sm text-muted-foreground">
+                            Disabled — won&apos;t appear on dashboard alerts.
+                          </p>
+                        ) : run?.status === "completed" ? (
+                          <p className="text-sm text-muted-foreground">
+                            Completed
+                            {run.completed_at
+                              ? ` at ${new Date(run.completed_at).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}`
+                              : ""}
+                          </p>
+                        ) : run?.status === "in_progress" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => router.push(`/app/${rid}/haccp/${run.id}`)}
+                          >
+                            Continue
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={startMutation.isPending}
+                            onClick={() =>
+                              startMutation.mutate({
+                                templateId: t.id,
+                                shiftNumber: shiftNum,
+                              })
+                            }
+                          >
+                            Start
+                          </Button>
+                        )}
+                      </div>
+                      {canToggle && (shiftNum === undefined || shiftNum === 1) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={toggleActiveMutation.isPending}
+                          onClick={() =>
+                            toggleActiveMutation.mutate({
+                              templateId: t.id,
+                              isActive: !t.is_active,
+                            })
+                          }
+                        >
+                          {t.is_active ? "Disable" : "Enable"}
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );

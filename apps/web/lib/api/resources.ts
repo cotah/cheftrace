@@ -110,8 +110,21 @@ export const equipmentApi = {
 };
 
 export const haccpApi = {
-  listTemplates: (rid: string, token: string) =>
-    api.get<HACCPTemplate[]>(`/restaurants/${rid}/haccp/templates`, token),
+  listTemplates: (
+    rid: string,
+    token: string,
+    options: { includeInactive?: boolean } = {},
+  ) => {
+    const qs = options.includeInactive ? "?include_inactive=true" : "";
+    return api.get<HACCPTemplate[]>(`/restaurants/${rid}/haccp/templates${qs}`, token);
+  },
+
+  setTemplateActive: (rid: string, templateId: string, isActive: boolean, token: string) =>
+    api.patch<HACCPTemplate>(
+      `/restaurants/${rid}/haccp/templates/${templateId}/active`,
+      { is_active: isActive },
+      token,
+    ),
 
   listRuns: (
     rid: string,

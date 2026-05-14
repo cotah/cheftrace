@@ -13,6 +13,10 @@ class HACCPTemplateCreate(BaseModel):
     equipment_type_filter: str | None = None
 
 
+class HACCPTemplateActiveUpdate(BaseModel):
+    is_active: bool
+
+
 class HACCPTemplateRead(BaseModel):
     id: UUID
     name: str
