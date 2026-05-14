@@ -33,8 +33,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local artifacts (settings, project state) — any level
+.claude/
 
 # Build
 build/
