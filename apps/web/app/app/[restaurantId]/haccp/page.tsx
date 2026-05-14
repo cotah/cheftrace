@@ -177,13 +177,16 @@ export default function HACCPPage({
       ) : (
         <div className="space-y-3">
           {templates.map((t) => {
-            const shifts = t.frequency === "shift" && t.shifts_per_day ? t.shifts_per_day : 1;
+            const inactive = !t.is_active;
+            // Disabled templates collapse to a single card — shift expansion
+            // is an operational concept that only makes sense when active.
+            const shifts =
+              !inactive && t.frequency === "shift" && t.shifts_per_day ? t.shifts_per_day : 1;
 
             return Array.from({ length: shifts }, (_, i) => {
-              const shiftNum = t.frequency === "shift" ? i + 1 : undefined;
+              const shiftNum = !inactive && t.frequency === "shift" ? i + 1 : undefined;
               const key = `${t.id}-${shiftNum ?? 0}`;
               const run = runsMap[key];
-              const inactive = !t.is_active;
 
               return (
                 <Card key={key} className={inactive ? "opacity-60 bg-muted/30" : undefined}>
